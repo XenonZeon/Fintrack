@@ -10,6 +10,13 @@ import {
 } from "@/lib/db/queries/transactions";
 import { ru } from "@/lib/i18n/ru";
 
+function revalidateAffectedPaths() {
+  revalidatePath("/transactions");
+  revalidatePath("/transactions/[month]", "page");
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/[month]", "page");
+}
+
 function parseInput(formData: FormData): TransactionInput | { error: string } {
   const type = formData.get("type") === "income" ? "income" : "expense";
   const rubles = Number(formData.get("amount"));
@@ -42,7 +49,7 @@ export async function createTransactionAction(
   if ("error" in input) return input;
 
   await createTransaction(user.id, input);
-  revalidatePath("/transactions");
+  revalidateAffectedPaths();
   return null;
 }
 
@@ -57,7 +64,7 @@ export async function updateTransactionAction(
   if ("error" in input) return input;
 
   await updateTransaction(user.id, id, input);
-  revalidatePath("/transactions");
+  revalidateAffectedPaths();
   return null;
 }
 
@@ -66,6 +73,6 @@ export async function deleteTransactionAction(id: string): Promise<{ error: stri
   if (!user) throw new Error("Unauthorized");
 
   await deleteTransaction(user.id, id);
-  revalidatePath("/transactions");
+  revalidateAffectedPaths();
   return null;
 }
