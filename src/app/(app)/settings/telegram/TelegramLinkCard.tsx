@@ -43,7 +43,7 @@ export function TelegramLinkCard({
 
   return (
     <div
-      className="flex h-112.5 flex-col items-center gap-5 rounded-lg border p-7"
+      className="flex h-109 flex-col items-center gap-5 rounded-lg border p-7"
       style={{ background: "var(--app-bg-elevated)", borderColor: "var(--app-border)" }}
     >
       <div
