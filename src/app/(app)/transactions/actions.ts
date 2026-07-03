@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth/server";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import {
   createTransaction,
   deleteTransaction,
@@ -35,13 +35,13 @@ function parseInput(formData: FormData): TransactionInput | { error: string } {
 export async function createTransactionAction(
   formData: FormData
 ): Promise<{ error: string } | null> {
-  const { data: session } = await auth.getSession();
-  if (!session?.user) throw new Error("Unauthorized");
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
 
   const input = parseInput(formData);
   if ("error" in input) return input;
 
-  await createTransaction(session.user.id, input);
+  await createTransaction(user.id, input);
   revalidatePath("/transactions");
   return null;
 }
@@ -50,22 +50,22 @@ export async function updateTransactionAction(
   id: string,
   formData: FormData
 ): Promise<{ error: string } | null> {
-  const { data: session } = await auth.getSession();
-  if (!session?.user) throw new Error("Unauthorized");
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
 
   const input = parseInput(formData);
   if ("error" in input) return input;
 
-  await updateTransaction(session.user.id, id, input);
+  await updateTransaction(user.id, id, input);
   revalidatePath("/transactions");
   return null;
 }
 
 export async function deleteTransactionAction(id: string): Promise<{ error: string } | null> {
-  const { data: session } = await auth.getSession();
-  if (!session?.user) throw new Error("Unauthorized");
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
 
-  await deleteTransaction(session.user.id, id);
+  await deleteTransaction(user.id, id);
   revalidatePath("/transactions");
   return null;
 }

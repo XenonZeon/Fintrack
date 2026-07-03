@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { auth } from "@/lib/auth/server";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { getCategoriesForUser } from "@/lib/db/queries/categories";
 import { getMonthTotals, getTransactionsForMonth } from "@/lib/db/queries/transactions";
 import { dayLabel, monthLabel } from "@/lib/format/date-ru";
@@ -35,8 +35,8 @@ export default async function TransactionsPage({
   const { month: monthParamValue } = await searchParams;
   const { year, month } = parseMonthParam(monthParamValue);
 
-  const { data: session } = await auth.getSession();
-  const userId = session!.user.id;
+  const user = await getCurrentUser();
+  const userId = user!.id;
 
   const [monthTransactions, totals, allCategories] = await Promise.all([
     getTransactionsForMonth(userId, year, month),

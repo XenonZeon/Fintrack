@@ -17,8 +17,10 @@
 ## Модель доступа
 Два слоя защиты (план). 1) App-layer (готово): весь доступ к БД идёт через server-only
 слой `lib/db/queries/*`, который ВСЕГДА фильтрует по `userId` из серверной сессии
-Neon Auth (`auth.getSession()`). Клиент в БД напрямую не ходит, мутации — только
-Server Actions и вебхук. 2) RLS (Neon RLS / neon_authorize, policy `user_id = auth.user_id()`)
+Neon Auth. Текущий пользователь везде берётся через `getCurrentUser()`
+(`lib/auth/current-user.ts`), а не напрямую `auth.getSession()` — см. DEV_SKIP_AUTH ниже.
+Клиент в БД напрямую не ходит, мутации — только Server Actions и вебхук.
+2) RLS (Neon RLS / neon_authorize, policy `user_id = auth.user_id()`)
 — пока НЕ настроен (требует включения в консоли Neon), см. decisions.md.
 См. decisions (ГРАБЛЯ про userId — RLS не освобождает от фильтрации в коде).
 
@@ -82,3 +84,5 @@ categories 1—* transactions. Деньги — только integer-копей�
 - TELEGRAM_BOT_TOKEN — токен бота.
 - TELEGRAM_WEBHOOK_SECRET — секрет для проверки заголовка вебхука.
 - NEXT_PUBLIC_APP_URL — публичный URL (для формирования deep-link на бота).
+- DEV_SKIP_AUTH/DEV_USER_ID/DEV_USER_EMAIL/DEV_USER_NAME — обход входа только для
+  локальной разработки (только не-production), см. decisions.md.
