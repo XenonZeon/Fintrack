@@ -6,7 +6,7 @@ import { ru } from "@/lib/i18n/ru";
 
 export async function signOut() {
   const { error } = await auth.signOut();
-  if (error) throw new Error(error.message || ru.dashboard.signOutError);
+  if (error) throw new Error(error.message || ru.sidebar.signOutError);
 
   redirect("/auth/sign-in");
 }

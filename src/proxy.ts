@@ -8,7 +8,7 @@ const authMiddleware = auth.middleware({
 });
 
 export default function proxy(request: NextRequest) {
-  if (PUBLIC_PATHS.includes(request.nextUrl.pathname)) {
+  if (PUBLIC_PATHS.includes(request.nextUrl.pathname) || request.headers.has("next-action")) {
     return NextResponse.next();
   }
   return authMiddleware(request);

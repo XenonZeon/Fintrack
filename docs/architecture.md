@@ -11,6 +11,8 @@
 - Графики: Recharts.
 - Хостинг: Vercel (staging = preview-деплой, prod = production-деплой).
 - Тексты интерфейса — `lib/i18n/ru.ts` (плоский объект строк), не хардкодятся в компонентах.
+- UI группы `(app)` — тёмная тема (макет), токены цвета в `globals.css` (`--app-*`), шрифт Inter
+  только внутри `(app)`; сайдбар — `src/components/Sidebar.tsx` (клиентский, подсветка активного пункта).
 
 ## Модель доступа
 Два слоя защиты (план). 1) App-layer (готово): весь доступ к БД идёт через server-only
@@ -26,8 +28,9 @@ Server Actions и вебхук. 2) RLS (Neon RLS / neon_authorize, policy `user_
 - categories: id, user_id, name, kind (expense|income), icon, color, sort_order, is_default,
   unique(user_id, name). При первом входе (в signIn-экшене) сидятся 8 дефолтных категорий
   расходов через onConflictDoNothing (защита от гонки при параллельных первых входах).
-- transactions: id, user_id, category_id→categories, type (expense|income),
-  amount_minor (integer, копейки), comment, occurred_at (date), source (web|telegram), created_at.
+- transactions: id, user_id, category_id→categories (nullable — доходу категория не нужна,
+  описание идёт через comment), type (expense|income), amount_minor (integer, копейки),
+  comment, occurred_at (date), source (web|telegram), created_at.
 - telegram_accounts: user_id (unique), telegram_id (bigint unique), chat_id, linked_at.
 - telegram_link_tokens: token (pk), user_id, expires_at (одноразовый, TTL 15 мин).
 - budgets (Фаза 2): id, user_id, category_id, period_month, limit_minor.
@@ -36,11 +39,13 @@ Server Actions и вебхук. 2) RLS (Neon RLS / neon_authorize, policy `user_
 categories 1—* transactions. Деньги — только integer-копейки, одна валюта (RUB).
 
 ## API / эндпоинты
-Мутации из веба — Server Actions (`actions/*`), не REST. REST только для внешнего Telegram.
-- Server Actions: createTransaction, updateTransaction, deleteTransaction,
-  createTelegramLinkToken, unlinkTelegram (Фаза 2: категории, бюджеты).
-- Server-компоненты (чтение через `lib/db/queries`): список транзакций по месяцу,
-  getMonthSummary, getByCategory, getByDay.
+Мутации из веба — Server Actions (`app/(app)/*/actions.ts`), не REST. REST только для Telegram.
+- Server Actions: createTransactionAction/updateTransactionAction/deleteTransactionAction
+  (`app/(app)/transactions/actions.ts`), signInWithEmail/signUpWithEmail, signOut
+  (Фаза 2: категории, бюджеты, createTelegramLinkToken, unlinkTelegram).
+- Server-компоненты (чтение через `lib/db/queries`): getTransactionsForMonth, getMonthTotals
+  (доход/расход/остаток) — `lib/db/queries/transactions.ts`. getByCategory/getByDay для
+  графиков — задача 4.
 - /api/auth/[...path] — прокси-роут Neon Auth (sign-up/sign-in/сброс/сессии).
   Свои страницы: /auth/sign-in, /auth/sign-up, /auth/verify-email (Server Actions
   на auth.signIn/signUp/signOut).
@@ -55,7 +60,12 @@ categories 1—* transactions. Деньги — только integer-копей�
   не на каждый заход). Proxy (`src/proxy.ts`) защищает всё, кроме публичных путей
   (`/`, `/health`, `/auth/*`, `/api/*`, статика) — секьюрно по умолчанию, новые
   страницы под `(app)` не нужно отдельно вписывать в matcher. Layout группы `(app)`
-  — вторая, авторитетная проверка (redirect, если сессии нет).
+  — вторая, авторитетная проверка (redirect, если сессии нет). Proxy пропускает без
+  проверки запросы с заголовком `Next-Action` (Server Actions) — см. ГРАБЛЯ в decisions.md.
+- транзакции: страница /transactions (в группе (app)) читает месяц из ?month=YYYY-MM
+  (переключение — обычные ссылки, без JS). Модалка добавления/редактирования —
+  клиентский компонент (таб Расход/Доход, категория обязательна только для расхода),
+  клик по строке = редактирование, сама транзакция удаляется из той же модалки.
 - платежи: нет.
 - Telegram-привязка (опционально): страница settings/telegram → генерим одноразовый токен →
   показываем deep-link `t.me/<bot>?start=<token>` → пользователь жмёт Start → вебхук валидирует

@@ -15,3 +15,7 @@
 2026-07-02 | Платежей нет | по брифу — личный проект
 2026-07-02 | Telegram-вебхук, не long-polling | serverless на Vercel не держит постоянный процесс; вебхук — стандарт
 2026-07-02 | ГРАБЛЯ: любой запрос к transactions/categories ОБЯЗАН фильтроваться по userId из серверной сессии | RLS — второй слой, не замена; клиент в БД не ходит
+2026-07-03 | transactions.category_id — nullable | доходу категория не нужна (по требованию пользователя), описание идёт через comment; категория обязательна только когда type=expense (проверка в Server Action, не в схеме БД)
+2026-07-03 | ГРАБЛЯ: auth.getSession() сразу после auth.signIn.email() в одном server action возвращает пустую сессию | signIn ставит cookie в ответ, но getSession в том же запросе читает входящие cookie — их ещё нет. Фикс: брать userId из data.user результата signIn, не дергать getSession повторно
+2026-07-03 | ГРАБЛЯ: proxy.ts должен пропускать запросы с заголовком Next-Action без проверки сессии | Server Actions шлют POST на текущий URL страницы; если middleware редиректит такой запрос на /auth/sign-in, ломается протокол React Server Actions ("unexpected response"). Каждый Server Action и так проверяет сессию сам через auth.getSession()
+2026-07-03 | formatRub округляет отрицательные и положительные суммы симметрично (не через голый Math.round) | Math.round(-1234.5) = -1234, но Math.round(1234.5) = 1235 — расход и остаток для одной и той же суммы показывали бы разные цифры

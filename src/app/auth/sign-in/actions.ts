@@ -9,16 +9,15 @@ export async function signInWithEmail(
   _prev: { error: string } | null,
   formData: FormData
 ) {
-  const { error } = await auth.signIn.email({
+  const { data, error } = await auth.signIn.email({
     email: formData.get("email") as string,
     password: formData.get("password") as string,
   });
 
   if (error) return { error: error.message || ru.signIn.genericError };
 
-  const { data: session } = await auth.getSession();
-  if (session?.user) {
-    await seedDefaultCategoriesIfMissing(session.user.id);
+  if (data?.user) {
+    await seedDefaultCategoriesIfMissing(data.user.id);
   }
 
   redirect("/dashboard");

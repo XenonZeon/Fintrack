@@ -3,6 +3,23 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  --app-bg: oklch(0.15 0 0);
+  --app-bg-sidebar: oklch(0.12 0 0);
+  --app-bg-elevated: oklch(0.19 0 0);
+  --app-bg-input: oklch(0.2 0 0);
+  --app-bg-modal: oklch(0.16 0 0);
+  --app-border-faint: rgba(255, 255, 255, 0.06);
+  --app-border: rgba(255, 255, 255, 0.08);
+  --app-border-strong: rgba(255, 255, 255, 0.1);
+  --app-border-stronger: rgba(255, 255, 255, 0.12);
+  --app-text: oklch(0.96 0 0);
+  --app-text-dim: oklch(0.6 0 0);
+  --app-text-dimmer: oklch(0.5 0 0);
+  --app-text-dimmest: oklch(0.45 0 0);
+  --app-text-faint: oklch(0.4 0 0);
+  --app-accent: oklch(0.96 0 0);
+  --app-accent-fg: oklch(0.14 0 0);
 }
 
 @theme inline {
