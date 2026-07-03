@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth/server";
 import { redirect } from "next/navigation";
+import { ru } from "@/lib/i18n/ru";
 
 export async function signUpWithEmail(
   _prev: { error: string } | null,
@@ -13,7 +14,7 @@ export async function signUpWithEmail(
     password: formData.get("password") as string,
   });
 
-  if (error) return { error: error.message || "Не удалось создать аккаунт" };
+  if (error) return { error: error.message || ru.signUp.genericError };
 
-  redirect("/dashboard");
+  redirect("/auth/verify-email");
 }

@@ -24,15 +24,18 @@ export async function seedDefaultCategoriesIfMissing(userId: string) {
   const existing = await getCategoriesForUser(userId);
   if (existing.length > 0) return;
 
-  await db.insert(categories).values(
-    DEFAULT_EXPENSE_CATEGORIES.map((category, index) => ({
-      userId,
-      name: category.name,
-      kind: "expense" as const,
-      icon: category.icon,
-      color: category.color,
-      sortOrder: index,
-      isDefault: true,
-    }))
-  );
+  await db
+    .insert(categories)
+    .values(
+      DEFAULT_EXPENSE_CATEGORIES.map((category, index) => ({
+        userId,
+        name: category.name,
+        kind: "expense" as const,
+        icon: category.icon,
+        color: category.color,
+        sortOrder: index,
+        isDefault: true,
+      }))
+    )
+    .onConflictDoNothing({ target: [categories.userId, categories.name] });
 }

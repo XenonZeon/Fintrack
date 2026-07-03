@@ -10,6 +10,7 @@
   подтверждённый email. Пользователи хранятся в neon_auth."user" (схема Better Auth).
 - Графики: Recharts.
 - Хостинг: Vercel (staging = preview-деплой, prod = production-деплой).
+- Тексты интерфейса — `lib/i18n/ru.ts` (плоский объект строк), не хардкодятся в компонентах.
 
 ## Модель доступа
 Два слоя защиты (план). 1) App-layer (готово): весь доступ к БД идёт через server-only
@@ -22,8 +23,9 @@ Server Actions и вебхук. 2) RLS (Neon RLS / neon_authorize, policy `user_
 ## Схема БД (детали в drizzle/schema.ts)
 - users — управляется Neon Auth в схеме neon_auth (таблица "user": id uuid, email, ...).
   Свои таблицы хранят user_id (ссылка на этот id); FK-целостность — по возможности.
-- categories: id, user_id, name, kind (expense|income), icon, color, sort_order, is_default.
-  При первом входе сидятся 8 дефолтных категорий расходов.
+- categories: id, user_id, name, kind (expense|income), icon, color, sort_order, is_default,
+  unique(user_id, name). При первом входе (в signIn-экшене) сидятся 8 дефолтных категорий
+  расходов через onConflictDoNothing (защита от гонки при параллельных первых входах).
 - transactions: id, user_id, category_id→categories, type (expense|income),
   amount_minor (integer, копейки), comment, occurred_at (date), source (web|telegram), created_at.
 - telegram_accounts: user_id (unique), telegram_id (bigint unique), chat_id, linked_at.
@@ -40,17 +42,20 @@ categories 1—* transactions. Деньги — только integer-копей�
 - Server-компоненты (чтение через `lib/db/queries`): список транзакций по месяцу,
   getMonthSummary, getByCategory, getByDay.
 - /api/auth/[...path] — прокси-роут Neon Auth (sign-up/sign-in/сброс/сессии).
-  Свои страницы: /auth/sign-in, /auth/sign-up (Server Actions на auth.signIn/signUp).
+  Свои страницы: /auth/sign-in, /auth/sign-up, /auth/verify-email (Server Actions
+  на auth.signIn/signUp/signOut).
 - POST /api/telegram/webhook — приём апдейтов Telegram. Защита: secret_token в заголовке
   (X-Telegram-Bot-Api-Secret-Token). Обрабатывает `/start <token>` (привязка) и
   сообщения вида "кофе 200" (парс → категория → транзакция → ответ ботом).
 
 ## Флоу
-- auth: регистрацию/логин/сессии/сброс пароля ведёт Neon Auth. На сервере
-  берём сессию (`auth.getSession()`); при первом входе — сид 8 дефолтных категорий
-  (в layout группы `(app)`). Proxy (`src/proxy.ts`) редиректит с `/dashboard/*`
-  на `/auth/sign-in`, если нет сессии; layout группы `(app)` — вторая, авторитетная
-  проверка (redirect, если сессии нет).
+- auth: регистрация не создаёт сессию — Neon Auth требует подтверждения email,
+  после signUp редирект на /auth/verify-email. Логин/сброс пароля ведёт Neon Auth;
+  при успешном signIn — сид 8 дефолтных категорий (в самом signIn-экшене, один раз,
+  не на каждый заход). Proxy (`src/proxy.ts`) защищает всё, кроме публичных путей
+  (`/`, `/health`, `/auth/*`, `/api/*`, статика) — секьюрно по умолчанию, новые
+  страницы под `(app)` не нужно отдельно вписывать в matcher. Layout группы `(app)`
+  — вторая, авторитетная проверка (redirect, если сессии нет).
 - платежи: нет.
 - Telegram-привязка (опционально): страница settings/telegram → генерим одноразовый токен →
   показываем deep-link `t.me/<bot>?start=<token>` → пользователь жмёт Start → вебхук валидирует

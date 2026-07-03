@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { signUpWithEmail } from "./actions";
+import { ru } from "@/lib/i18n/ru";
 
 export default function SignUpPage() {
   const [state, formAction, isPending] = useActionState(signUpWithEmail, null);
@@ -12,10 +13,10 @@ export default function SignUpPage() {
       action={formAction}
       className="flex flex-1 flex-col items-center justify-center gap-5"
     >
-      <h1 className="text-2xl font-semibold text-zinc-800">Регистрация</h1>
+      <h1 className="text-2xl font-semibold text-zinc-800">{ru.signUp.title}</h1>
 
       <label className="flex w-full max-w-sm flex-col gap-1.5">
-        <span className="text-sm font-medium text-zinc-700">Имя</span>
+        <span className="text-sm font-medium text-zinc-700">{ru.signUp.name}</span>
         <input
           name="name"
           type="text"
@@ -24,7 +25,7 @@ export default function SignUpPage() {
         />
       </label>
       <label className="flex w-full max-w-sm flex-col gap-1.5">
-        <span className="text-sm font-medium text-zinc-700">Email</span>
+        <span className="text-sm font-medium text-zinc-700">{ru.signUp.email}</span>
         <input
           name="email"
           type="email"
@@ -33,7 +34,7 @@ export default function SignUpPage() {
         />
       </label>
       <label className="flex w-full max-w-sm flex-col gap-1.5">
-        <span className="text-sm font-medium text-zinc-700">Пароль</span>
+        <span className="text-sm font-medium text-zinc-700">{ru.signUp.password}</span>
         <input
           name="password"
           type="password"
@@ -49,11 +50,11 @@ export default function SignUpPage() {
         disabled={isPending}
         className="w-full max-w-sm rounded-md bg-zinc-900 px-3 py-1.5 font-semibold text-white disabled:opacity-50"
       >
-        {isPending ? "Создаём..." : "Создать аккаунт"}
+        {isPending ? ru.signUp.submitPending : ru.signUp.submit}
       </button>
 
       <Link href="/auth/sign-in" className="text-sm text-zinc-500 underline">
-        Уже есть аккаунт? Войти
+        {ru.signUp.haveAccount}
       </Link>
     </form>
   );

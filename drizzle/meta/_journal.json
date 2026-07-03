@@ -15,6 +15,13 @@
       "when": 1783037344545,
       "tag": "0001_violet_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783040412751,
+      "tag": "0002_polite_leopardon",
+      "breakpoints": true
     }
   ]
 }
