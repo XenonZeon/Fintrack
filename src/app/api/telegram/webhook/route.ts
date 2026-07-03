@@ -1,18 +1,25 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { getCategoriesForUser } from "@/lib/db/queries/categories";
 import { consumeLinkToken, getUserIdByTelegramId } from "@/lib/db/queries/telegram";
-import { createTransaction } from "@/lib/db/queries/transactions";
+import {
+  createTransaction,
+  getTransactionById,
+  updateTransactionCategory,
+} from "@/lib/db/queries/transactions";
 import { formatSignedRub } from "@/lib/format/money";
 import { dateParam } from "@/lib/format/month-nav";
 import { revalidateTransactionPaths } from "@/lib/revalidate-transactions";
 import { parseTransactionMessage } from "@/lib/telegram/parse-message";
 
 const LINK_TOKEN_PATTERN = /^[A-Z0-9]{4}-[A-Z0-9]{4}$/i;
+const FALLBACK_CATEGORY_NAME = "Прочее";
 
 function todayDateParam() {
   const now = new Date();
   return dateParam(now.getFullYear(), now.getMonth() + 1, now.getDate());
 }
+
+type InlineKeyboard = { inline_keyboard: { text: string; callback_data: string }[][] };
 
 type TelegramUpdate = {
   message?: {
@@ -20,17 +27,82 @@ type TelegramUpdate = {
     chat: { id: number };
     from?: { id: number; username?: string };
   };
+  callback_query?: {
+    id: string;
+    data?: string;
+    from: { id: number };
+    message?: { message_id: number; chat: { id: number } };
+  };
 };
 
-async function sendMessage(chatId: number, text: string) {
+async function callTelegramApi(method: string, body: unknown) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) return;
 
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+  await fetch(`https://api.telegram.org/bot${token}/${method}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text }),
+    body: JSON.stringify(body),
   });
+}
+
+async function sendMessage(chatId: number, text: string, replyMarkup?: InlineKeyboard) {
+  await callTelegramApi("sendMessage", {
+    chat_id: chatId,
+    text,
+    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+  });
+}
+
+async function answerCallbackQuery(callbackQueryId: string, text?: string) {
+  await callTelegramApi("answerCallbackQuery", { callback_query_id: callbackQueryId, text });
+}
+
+async function editMessageText(chatId: number, messageId: number, text: string) {
+  await callTelegramApi("editMessageText", { chat_id: chatId, message_id: messageId, text });
+}
+
+async function editMessageReplyMarkup(chatId: number, messageId: number, replyMarkup: InlineKeyboard) {
+  await callTelegramApi("editMessageReplyMarkup", {
+    chat_id: chatId,
+    message_id: messageId,
+    reply_markup: replyMarkup,
+  });
+}
+
+async function notifyAdmin(text: string) {
+  const adminChatId = Number(process.env.TELEGRAM_ADMIN_CHAT_ID);
+  if (!Number.isFinite(adminChatId) || !adminChatId) return;
+  await sendMessage(adminChatId, text);
+}
+
+function categoryConfirmKeyboard(transactionId: string): InlineKeyboard {
+  return {
+    inline_keyboard: [
+      [
+        { text: "✅ Верно", callback_data: `catok:${transactionId}` },
+        { text: "✏️ Другая категория", callback_data: `catfix:${transactionId}` },
+      ],
+    ],
+  };
+}
+
+async function expenseCategoriesForUser(userId: string) {
+  const categories = await getCategoriesForUser(userId);
+  return categories.filter((c) => c.kind === "expense").sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+function categoryPickerKeyboard(transactionId: string, categories: { name: string; icon: string | null }[]): InlineKeyboard {
+  const buttons = categories.map((category, index) => ({
+    text: category.icon ? `${category.icon} ${category.name}` : category.name,
+    callback_data: `setcat:${transactionId}:${index}`,
+  }));
+
+  const rows: { text: string; callback_data: string }[][] = [];
+  for (let i = 0; i < buttons.length; i += 2) {
+    rows.push(buttons.slice(i, i + 2));
+  }
+  return { inline_keyboard: rows };
 }
 
 async function tryLinkToken(
@@ -74,16 +146,16 @@ async function handleTransactionMessage(text: string, telegramId: number, chatId
 
   if (parsed.type === "expense") {
     const userCategories = await getCategoriesForUser(userId);
-    const targetName = parsed.categoryKeyword ?? "Прочее";
+    const targetName = parsed.categoryKeyword ?? FALLBACK_CATEGORY_NAME;
     const category =
       userCategories.find((c) => c.kind === "expense" && c.name === targetName) ??
-      userCategories.find((c) => c.kind === "expense" && c.isDefault && c.name === "Прочее") ??
+      userCategories.find((c) => c.kind === "expense" && c.isDefault && c.name === FALLBACK_CATEGORY_NAME) ??
       null;
     categoryId = category?.id ?? null;
     categoryName = category?.name ?? null;
   }
 
-  await createTransaction(userId, {
+  const transactionId = await createTransaction(userId, {
     type: parsed.type,
     amountMinor: parsed.amountMinor,
     occurredAt: todayDateParam(),
@@ -98,10 +170,81 @@ async function handleTransactionMessage(text: string, telegramId: number, chatId
   if (parsed.comment && parsed.comment.toLowerCase() !== categoryName?.toLowerCase()) {
     parts.push(parsed.comment);
   }
-  await sendMessage(chatId, `✅ Добавлено: ${parts.join(" · ")}`);
+
+  const isUncertainFallback = parsed.type === "expense" && !parsed.categoryKeyword && categoryName === FALLBACK_CATEGORY_NAME;
+  await sendMessage(
+    chatId,
+    `✅ Добавлено: ${parts.join(" · ")}`,
+    isUncertainFallback ? categoryConfirmKeyboard(transactionId) : undefined
+  );
+}
+
+async function handleCallbackQuery(callbackQuery: NonNullable<TelegramUpdate["callback_query"]>) {
+  const data = callbackQuery.data ?? "";
+  const message = callbackQuery.message;
+  if (!message) {
+    await answerCallbackQuery(callbackQuery.id);
+    return;
+  }
+  const chatId = message.chat.id;
+  const messageId = message.message_id;
+
+  if (data.startsWith("catok:")) {
+    await answerCallbackQuery(callbackQuery.id, "Оставили как есть");
+    await editMessageReplyMarkup(chatId, messageId, { inline_keyboard: [] });
+    return;
+  }
+
+  if (data.startsWith("catfix:")) {
+    const transactionId = data.slice("catfix:".length);
+    const userId = await getUserIdByTelegramId(callbackQuery.from.id);
+    if (!userId) {
+      await answerCallbackQuery(callbackQuery.id, "Бот не подключён к аккаунту");
+      return;
+    }
+
+    const categories = await expenseCategoriesForUser(userId);
+    await editMessageReplyMarkup(chatId, messageId, categoryPickerKeyboard(transactionId, categories));
+    await answerCallbackQuery(callbackQuery.id);
+    return;
+  }
+
+  if (data.startsWith("setcat:")) {
+    const [, transactionId, indexStr] = data.split(":");
+    const userId = await getUserIdByTelegramId(callbackQuery.from.id);
+    if (!userId) {
+      await answerCallbackQuery(callbackQuery.id, "Бот не подключён к аккаунту");
+      return;
+    }
+
+    const categories = await expenseCategoriesForUser(userId);
+    const category = categories[Number(indexStr)];
+    const transaction = category ? await getTransactionById(userId, transactionId) : null;
+    if (!category || !transaction) {
+      await answerCallbackQuery(callbackQuery.id, "Не удалось обновить категорию");
+      return;
+    }
+
+    await updateTransactionCategory(userId, transactionId, category.id);
+    revalidateTransactionPaths();
+    await editMessageText(chatId, messageId, `Категория обновлена: ${category.name}`);
+    await answerCallbackQuery(callbackQuery.id, "Готово");
+
+    await notifyAdmin(
+      `Исправлено: "${transaction.comment ?? ""}" был ${FALLBACK_CATEGORY_NAME} → ${category.name} (userId: ${userId})`
+    );
+    return;
+  }
+
+  await answerCallbackQuery(callbackQuery.id);
 }
 
 async function handleUpdate(update: TelegramUpdate) {
+  if (update.callback_query) {
+    await handleCallbackQuery(update.callback_query);
+    return;
+  }
+
   const message = update.message;
   const text = message?.text?.trim();
 

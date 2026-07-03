@@ -108,15 +108,32 @@ export function summarizeMonthTransactions(
 }
 
 export async function createTransaction(userId: string, input: TransactionInput) {
-  await db.insert(transactions).values({
-    userId,
-    type: input.type,
-    amountMinor: input.amountMinor,
-    comment: input.comment || null,
-    occurredAt: input.occurredAt,
-    categoryId: input.type === "expense" ? input.categoryId || null : null,
-    source: input.source ?? "web",
+  const [row] = await db
+    .insert(transactions)
+    .values({
+      userId,
+      type: input.type,
+      amountMinor: input.amountMinor,
+      comment: input.comment || null,
+      occurredAt: input.occurredAt,
+      categoryId: input.type === "expense" ? input.categoryId || null : null,
+      source: input.source ?? "web",
+    })
+    .returning({ id: transactions.id });
+  return row.id;
+}
+
+export async function getTransactionById(userId: string, id: string) {
+  return db.query.transactions.findFirst({
+    where: and(eq(transactions.id, id), eq(transactions.userId, userId)),
   });
+}
+
+export async function updateTransactionCategory(userId: string, id: string, categoryId: string) {
+  await db
+    .update(transactions)
+    .set({ categoryId })
+    .where(and(eq(transactions.id, id), eq(transactions.userId, userId)));
 }
 
 export async function updateTransaction(userId: string, id: string, input: TransactionInput) {
