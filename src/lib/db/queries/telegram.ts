@@ -21,6 +21,13 @@ export async function getTelegramAccount(userId: string) {
   });
 }
 
+export async function getUserIdByTelegramId(telegramId: number) {
+  const row = await db.query.telegramAccounts.findFirst({
+    where: eq(telegramAccounts.telegramId, telegramId),
+  });
+  return row?.userId ?? null;
+}
+
 export async function countTelegramTransactions(userId: string) {
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })

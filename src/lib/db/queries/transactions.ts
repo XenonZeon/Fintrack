@@ -12,6 +12,7 @@ export type TransactionInput = {
   occurredAt: string;
   comment?: string | null;
   categoryId?: string | null;
+  source?: "web" | "telegram";
 };
 
 function monthRange(year: number, month: number) {
@@ -114,6 +115,7 @@ export async function createTransaction(userId: string, input: TransactionInput)
     comment: input.comment || null,
     occurredAt: input.occurredAt,
     categoryId: input.type === "expense" ? input.categoryId || null : null,
+    source: input.source ?? "web",
   });
 }
 

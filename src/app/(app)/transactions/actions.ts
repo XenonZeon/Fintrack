@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getCategoryById } from "@/lib/db/queries/categories";
 import {
@@ -11,13 +10,7 @@ import {
 } from "@/lib/db/queries/transactions";
 import { dateParam } from "@/lib/format/month-nav";
 import { ru } from "@/lib/i18n/ru";
-
-function revalidateAffectedPaths() {
-  revalidatePath("/transactions");
-  revalidatePath("/transactions/[month]", "page");
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/[month]", "page");
-}
+import { revalidateTransactionPaths } from "@/lib/revalidate-transactions";
 
 function parseInput(formData: FormData): TransactionInput | { error: string } {
   const type = formData.get("type") === "income" ? "income" : "expense";
@@ -76,7 +69,7 @@ export async function createTransactionAction(
   if (categoryError) return categoryError;
 
   await createTransaction(user.id, input);
-  revalidateAffectedPaths();
+  revalidateTransactionPaths();
   return null;
 }
 
@@ -94,7 +87,7 @@ export async function updateTransactionAction(
   if (categoryError) return categoryError;
 
   await updateTransaction(user.id, id, input);
-  revalidateAffectedPaths();
+  revalidateTransactionPaths();
   return null;
 }
 
@@ -103,6 +96,6 @@ export async function deleteTransactionAction(id: string): Promise<{ error: stri
   if (!user) throw new Error("Unauthorized");
 
   await deleteTransaction(user.id, id);
-  revalidateAffectedPaths();
+  revalidateTransactionPaths();
   return null;
 }
