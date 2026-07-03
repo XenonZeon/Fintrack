@@ -5,21 +5,22 @@
 - Монолит: фронт, серверная логика и Telegram-вебхук в одном Next-приложении.
 - БД: Neon (Postgres, serverless, auto-resume из scale-to-zero).
 - ORM/миграции: Drizzle.
-- Auth: Neon Auth (Stack Auth), email + пароль. Управляемый: логин/сессии/сброс
-  пароля/верификация — платформой. Пользователи синкаются в neon_auth.users_sync.
+- Auth: Neon Auth (@neondatabase/neon-js, Better Auth под капотом), email + пароль.
+  Управляемый: логин/сессии/сброс пароля/верификация — платформой. Вход требует
+  подтверждённый email. Пользователи хранятся в neon_auth."user" (схема Better Auth).
 - Графики: Recharts.
 - Хостинг: Vercel (staging = preview-деплой, prod = production-деплой).
 
 ## Модель доступа
-Два слоя защиты. 1) App-layer: весь доступ к БД идёт через server-only слой
-`lib/db/queries/*`, который ВСЕГДА фильтрует по `userId` из серверной сессии Neon Auth
-(getUser на сервере). Клиент в БД напрямую не ходит, мутации — только Server Actions
-и вебхук. 2) RLS (Neon RLS / neon_authorize): на categories/transactions/telegram_*
-включён RLS с policy `user_id = auth.user_id()` — подстраховка на случай бага в коде.
+Два слоя защиты (план). 1) App-layer (готово): весь доступ к БД идёт через server-only
+слой `lib/db/queries/*`, который ВСЕГДА фильтрует по `userId` из серверной сессии
+Neon Auth (`auth.getSession()`). Клиент в БД напрямую не ходит, мутации — только
+Server Actions и вебхук. 2) RLS (Neon RLS / neon_authorize, policy `user_id = auth.user_id()`)
+— пока НЕ настроен (требует включения в консоли Neon), см. decisions.md.
 См. decisions (ГРАБЛЯ про userId — RLS не освобождает от фильтрации в коде).
 
 ## Схема БД (детали в drizzle/schema.ts)
-- users — управляется Neon Auth в схеме neon_auth.users_sync (id (text/uuid), email, ...).
+- users — управляется Neon Auth в схеме neon_auth (таблица "user": id uuid, email, ...).
   Свои таблицы хранят user_id (ссылка на этот id); FK-целостность — по возможности.
 - categories: id, user_id, name, kind (expense|income), icon, color, sort_order, is_default.
   При первом входе сидятся 8 дефолтных категорий расходов.
@@ -38,15 +39,18 @@ categories 1—* transactions. Деньги — только integer-копей�
   createTelegramLinkToken, unlinkTelegram (Фаза 2: категории, бюджеты).
 - Server-компоненты (чтение через `lib/db/queries`): список транзакций по месяцу,
   getMonthSummary, getByCategory, getByDay.
-- /handler/[...stack] — маршруты Neon Auth (Stack Auth): login/register/logout/сброс.
+- /api/auth/[...path] — прокси-роут Neon Auth (sign-up/sign-in/сброс/сессии).
+  Свои страницы: /auth/sign-in, /auth/sign-up (Server Actions на auth.signIn/signUp).
 - POST /api/telegram/webhook — приём апдейтов Telegram. Защита: secret_token в заголовке
   (X-Telegram-Bot-Api-Secret-Token). Обрабатывает `/start <token>` (привязка) и
   сообщения вида "кофе 200" (парс → категория → транзакция → ответ ботом).
 
 ## Флоу
-- auth: регистрацию/логин/сессии/сброс пароля ведёт Neon Auth (Stack Auth). На сервере
-  берём пользователя (getUser); при первом входе — сид 8 дефолтных категорий.
-  Middleware защищает группу `(app)`.
+- auth: регистрацию/логин/сессии/сброс пароля ведёт Neon Auth. На сервере
+  берём сессию (`auth.getSession()`); при первом входе — сид 8 дефолтных категорий
+  (в layout группы `(app)`). Proxy (`src/proxy.ts`) редиректит с `/dashboard/*`
+  на `/auth/sign-in`, если нет сессии; layout группы `(app)` — вторая, авторитетная
+  проверка (redirect, если сессии нет).
 - платежи: нет.
 - Telegram-привязка (опционально): страница settings/telegram → генерим одноразовый токен →
   показываем deep-link `t.me/<bot>?start=<token>` → пользователь жмёт Start → вебхук валидирует
@@ -58,9 +62,8 @@ categories 1—* transactions. Деньги — только integer-копей�
 
 ## Env-переменные (значения — в .env, не коммитить)
 - DATABASE_URL — строка подключения Neon (pooled).
-- NEXT_PUBLIC_STACK_PROJECT_ID — id проекта Neon Auth (Stack).
-- NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY — публичный клиентский ключ Neon Auth.
-- STACK_SECRET_SERVER_KEY — серверный секрет Neon Auth.
+- NEON_AUTH_BASE_URL — Auth URL проекта Neon Auth (консоль → Auth → Configuration).
+- NEON_AUTH_COOKIE_SECRET — секрет для подписи сессионной cookie (openssl rand -base64 32).
 - TELEGRAM_BOT_TOKEN — токен бота.
 - TELEGRAM_WEBHOOK_SECRET — секрет для проверки заголовка вебхука.
 - NEXT_PUBLIC_APP_URL — публичный URL (для формирования deep-link на бота).
