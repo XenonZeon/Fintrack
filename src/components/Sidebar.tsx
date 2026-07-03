@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: ru.sidebar.dashboard, enabled: true },
   { href: "/transactions", label: ru.sidebar.transactions, enabled: true },
   { href: null, label: ru.sidebar.budget, enabled: false, tag: ru.sidebar.budgetSoon },
-  { href: null, label: ru.sidebar.telegramBot, enabled: false },
+  { href: "/settings/telegram", label: ru.sidebar.telegramBot, enabled: true },
 ] as const;
 
 export function Sidebar({ userName }: { userName: string }) {

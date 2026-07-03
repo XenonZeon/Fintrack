@@ -16,3 +16,7 @@ export function dayLabel(occurredAt: string) {
   const [, m, d] = occurredAt.split("-").map(Number);
   return `${d} ${MONTHS_GENITIVE[m - 1]}`;
 }
+
+export function fullDateLabel(date: Date) {
+  return `${date.getDate()} ${MONTHS_GENITIVE[date.getMonth()]} ${date.getFullYear()}`;
+}
