@@ -36,6 +36,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local project docs / AI-assistant instructions — not for the shared repo
+/docs/
+/CLAUDE.md
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
