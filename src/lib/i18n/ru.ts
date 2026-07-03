@@ -1,6 +1,6 @@
 export const ru = {
   common: {
-    appName: "Fintrack",
+    appName: "Финтрекер",
   },
   home: {
     signInCta: "Войти",
@@ -51,9 +51,6 @@ export const ru = {
     title: "Транзакции",
     add: "+ Добавить",
     empty: "В этом месяце пока нет транзакций",
-    income: "Доход",
-    expense: "Расход",
-    balance: "Остаток",
     columnDate: "Дата",
     columnCategory: "Категория",
     columnComment: "Комментарий",

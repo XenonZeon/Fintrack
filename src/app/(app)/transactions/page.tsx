@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getCategoriesForUser } from "@/lib/db/queries/categories";
-import { getMonthTotals, getTransactionsForMonth } from "@/lib/db/queries/transactions";
+import { getTransactionsForMonth } from "@/lib/db/queries/transactions";
 import { dayLabel, monthLabel } from "@/lib/format/date-ru";
 import { formatRub } from "@/lib/format/money";
 import { ru } from "@/lib/i18n/ru";
@@ -38,9 +38,8 @@ export default async function TransactionsPage({
   const user = await getCurrentUser();
   const userId = user!.id;
 
-  const [monthTransactions, totals, allCategories] = await Promise.all([
+  const [monthTransactions, allCategories] = await Promise.all([
     getTransactionsForMonth(userId, year, month),
-    getMonthTotals(userId, year, month),
     getCategoriesForUser(userId),
   ]);
 
@@ -99,7 +98,6 @@ export default async function TransactionsPage({
         year={year}
         month={month}
         monthLabel={monthLabel(year, month)}
-        totals={totals}
         rows={rows}
         categories={expenseCategories}
       />

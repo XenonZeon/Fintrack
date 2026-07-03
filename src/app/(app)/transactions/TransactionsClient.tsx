@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { ru } from "@/lib/i18n/ru";
-import { formatRub } from "@/lib/format/money";
 import { TransactionModal, type CategoryOption, type EditableTransaction } from "./TransactionModal";
 
 export type TransactionRow = {
@@ -21,14 +20,12 @@ export function TransactionsClient({
   year,
   month,
   monthLabel,
-  totals,
   rows,
   categories,
 }: {
   year: number;
   month: number;
   monthLabel: string;
-  totals: { income: number; expense: number; balance: number };
   rows: TransactionRow[];
   categories: CategoryOption[];
 }) {
@@ -59,12 +56,6 @@ export function TransactionsClient({
         >
           {ru.transactions.add}
         </button>
-      </div>
-
-      <div className="mb-8 flex gap-3">
-        <StatChip label={ru.transactions.income} value={"+ " + formatRub(totals.income) + " ₽"} />
-        <StatChip label={ru.transactions.expense} value={"− " + formatRub(totals.expense) + " ₽"} />
-        <StatChip label={ru.transactions.balance} value={formatRub(totals.balance) + " ₽"} />
       </div>
 
       <div
@@ -112,20 +103,6 @@ export function TransactionsClient({
           onClose={() => setModal(null)}
         />
       )}
-    </div>
-  );
-}
-
-function StatChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div
-      className="flex-1 rounded-lg border px-5 py-4"
-      style={{ background: "var(--app-bg-elevated)", borderColor: "var(--app-border)" }}
-    >
-      <div className="mb-1 text-[11px] uppercase" style={{ color: "var(--app-text-dimmer)" }}>
-        {label}
-      </div>
-      <div className="text-lg font-bold">{value}</div>
     </div>
   );
 }

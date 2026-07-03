@@ -45,9 +45,10 @@ categories 1—* transactions. Деньги — только integer-копей�
 - Server Actions: createTransactionAction/updateTransactionAction/deleteTransactionAction
   (`app/(app)/transactions/actions.ts`), signInWithEmail/signUpWithEmail, signOut
   (Фаза 2: категории, бюджеты, createTelegramLinkToken, unlinkTelegram).
-- Server-компоненты (чтение через `lib/db/queries`): getTransactionsForMonth, getMonthTotals
-  (доход/расход/остаток) — `lib/db/queries/transactions.ts`. getByCategory/getByDay для
-  графиков — задача 4.
+- Server-компоненты (чтение через `lib/db/queries`): getTransactionsForMonth — список для
+  /transactions. getMonthTotals (доход/расход/остаток) готов, но пока не используется на
+  /transactions (в макете этой страницы итогов нет) — понадобится дашборду (задача 4).
+  getByCategory/getByDay для графиков — тоже задача 4.
 - /api/auth/[...path] — прокси-роут Neon Auth (sign-up/sign-in/сброс/сессии).
   Свои страницы: /auth/sign-in, /auth/sign-up, /auth/verify-email (Server Actions
   на auth.signIn/signUp/signOut).
