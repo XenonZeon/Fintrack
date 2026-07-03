@@ -1,5 +1,6 @@
 import QRCode from "qrcode";
-import { getCurrentUser } from "@/lib/auth/current-user";
+import { Breadcrumb } from "@/components/Breadcrumb";
+import { requireCurrentUser } from "@/lib/auth/current-user";
 import {
   countTelegramTransactions,
   getRecentTelegramTransactions,
@@ -7,7 +8,7 @@ import {
   issueLinkToken,
 } from "@/lib/db/queries/telegram";
 import { dayLabel, fullDateLabel } from "@/lib/format/date-ru";
-import { formatRub } from "@/lib/format/money";
+import { formatSignedRub } from "@/lib/format/money";
 import { pluralRu } from "@/lib/format/plural-ru";
 import { ru } from "@/lib/i18n/ru";
 import { DisconnectButton } from "./DisconnectButton";
@@ -17,17 +18,6 @@ function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return name.slice(0, 2).toUpperCase();
-}
-
-function Breadcrumb() {
-  return (
-    <div className="mb-16 text-[13px]" style={{ color: "var(--app-text-dimmer)" }}>
-      {ru.telegram.breadcrumb}&nbsp;/&nbsp;
-      <span className="font-semibold" style={{ color: "var(--app-text)" }}>
-        {ru.telegram.breadcrumbCurrent}
-      </span>
-    </div>
-  );
 }
 
 function HowToUseCard() {
@@ -61,8 +51,8 @@ function HowToUseCard() {
 }
 
 export async function TelegramView() {
-  const user = await getCurrentUser();
-  const userId = user!.id;
+  const user = await requireCurrentUser();
+  const userId = user.id;
 
   const account = await getTelegramAccount(userId);
 
@@ -74,7 +64,9 @@ export async function TelegramView() {
 
     return (
       <div>
-        <Breadcrumb />
+        <div className="mb-16">
+          <Breadcrumb section={ru.telegram.breadcrumb} current={ru.telegram.breadcrumbCurrent} />
+        </div>
         <div className="mb-3 flex items-center gap-3.5">
           <div className="text-[32px] font-extrabold tracking-tight">{ru.telegram.connectedTitle}</div>
           <div
@@ -104,10 +96,10 @@ export async function TelegramView() {
                 className="flex h-12 w-12 flex-none items-center justify-center rounded-full border"
                 style={{ background: "var(--app-bg)", borderColor: "var(--app-border-strong)" }}
               >
-                <div className="text-lg font-extrabold">{initials(user!.name || user!.email)}</div>
+                <div className="text-lg font-extrabold">{initials(user.name || user.email)}</div>
               </div>
               <div>
-                <div className="text-[15px] font-bold">{user!.name || user!.email}</div>
+                <div className="text-[15px] font-bold">{user.name || user.email}</div>
                 {account.telegramUsername && (
                   <div className="text-[13px]" style={{ color: "var(--app-text-dimmer)" }}>
                     @{account.telegramUsername}
@@ -172,9 +164,7 @@ export async function TelegramView() {
                     <div className="flex-1 text-sm" style={{ color: "var(--app-text-dimmer)" }}>
                       {tx.comment}
                     </div>
-                    <div className="text-sm font-bold">
-                      {(tx.type === "income" ? "+ " : "− ") + formatRub(tx.amountMinor) + " ₽"}
-                    </div>
+                    <div className="text-sm font-bold">{formatSignedRub(tx.amountMinor, tx.type)}</div>
                   </div>
                 ))}
               </div>
@@ -192,7 +182,9 @@ export async function TelegramView() {
 
   return (
     <div>
-      <Breadcrumb />
+      <div className="mb-16">
+        <Breadcrumb section={ru.telegram.breadcrumb} current={ru.telegram.breadcrumbCurrent} />
+      </div>
       <div className="mb-3 text-[32px] font-extrabold tracking-tight">{ru.telegram.notConnectedTitle}</div>
       <div className="mb-12 max-w-[520px] text-sm leading-relaxed" style={{ color: "var(--app-text-dimmer)" }}>
         {ru.telegram.notConnectedSubtitle}

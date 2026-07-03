@@ -1,20 +1,20 @@
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/auth/current-user";
+import { Breadcrumb } from "@/components/Breadcrumb";
+import { requireCurrentUser } from "@/lib/auth/current-user";
 import { getCategoriesForUser } from "@/lib/db/queries/categories";
 import { getTransactionsForMonth } from "@/lib/db/queries/transactions";
-import { dayLabel, monthLabel } from "@/lib/format/date-ru";
-import { formatRub } from "@/lib/format/money";
+import { dayLabel, dayOfMonth, monthLabel } from "@/lib/format/date-ru";
+import { formatSignedRub } from "@/lib/format/money";
 import { monthParam, shiftMonth } from "@/lib/format/month-nav";
 import { ru } from "@/lib/i18n/ru";
 import { TransactionsClient } from "./TransactionsClient";
 
 export async function TransactionsView({ year, month }: { year: number; month: number }) {
-  const user = await getCurrentUser();
-  const userId = user!.id;
+  const user = await requireCurrentUser();
 
   const [monthTransactions, allCategories] = await Promise.all([
-    getTransactionsForMonth(userId, year, month),
-    getCategoriesForUser(userId),
+    getTransactionsForMonth(user.id, year, month),
+    getCategoriesForUser(user.id),
   ]);
 
   const expenseCategories = allCategories
@@ -26,12 +26,12 @@ export async function TransactionsView({ year, month }: { year: number; month: n
     id: t.id,
     type: t.type,
     dayLabel: dayLabel(t.occurredAt),
-    day: Number(t.occurredAt.split("-")[2]),
+    day: dayOfMonth(t.occurredAt),
     category: t.categoryName ?? ru.transactions.noCategory,
     categoryId: t.categoryId,
     comment: t.comment ?? "",
     amountRub: t.amountMinor / 100,
-    amountLabel: (t.type === "income" ? "+ " : "− ") + formatRub(t.amountMinor) + " ₽",
+    amountLabel: formatSignedRub(t.amountMinor, t.type),
   }));
 
   const prev = shiftMonth(year, month, -1);
@@ -40,12 +40,7 @@ export async function TransactionsView({ year, month }: { year: number; month: n
   return (
     <div>
       <div className="mb-16 flex items-center justify-between">
-        <div className="text-[13px]" style={{ color: "var(--app-text-dimmer)" }}>
-          {ru.transactions.breadcrumb}&nbsp;/&nbsp;
-          <span className="font-semibold" style={{ color: "var(--app-text)" }}>
-            {ru.transactions.breadcrumbCurrent}
-          </span>
-        </div>
+        <Breadcrumb section={ru.transactions.breadcrumb} current={ru.transactions.breadcrumbCurrent} />
         <div
           className="flex items-center gap-1 rounded-lg border p-1.5"
           style={{ background: "var(--app-bg-elevated)", borderColor: "var(--app-border)" }}

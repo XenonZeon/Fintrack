@@ -1,5 +1,5 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories } from "@/lib/db/schema";
 
@@ -17,6 +17,12 @@ const DEFAULT_EXPENSE_CATEGORIES = [
 export async function getCategoriesForUser(userId: string) {
   return db.query.categories.findMany({
     where: eq(categories.userId, userId),
+  });
+}
+
+export async function getCategoryById(userId: string, id: string) {
+  return db.query.categories.findFirst({
+    where: and(eq(categories.id, id), eq(categories.userId, userId)),
   });
 }
 

@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import { Inter } from "next/font/google";
-import { getCurrentUser } from "@/lib/auth/current-user";
+import { requireCurrentUser } from "@/lib/auth/current-user";
 import { Sidebar } from "@/components/Sidebar";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-app" });
@@ -12,8 +11,7 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/auth/sign-in");
+  const user = await requireCurrentUser();
 
   return (
     <div

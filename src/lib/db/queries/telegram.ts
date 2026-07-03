@@ -1,6 +1,6 @@
 import "server-only";
 import { randomInt } from "crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories, telegramAccounts, telegramLinkTokens, transactions } from "@/lib/db/schema";
 
@@ -22,11 +22,11 @@ export async function getTelegramAccount(userId: string) {
 }
 
 export async function countTelegramTransactions(userId: string) {
-  const rows = await db
-    .select({ id: transactions.id })
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
     .from(transactions)
     .where(and(eq(transactions.userId, userId), eq(transactions.source, "telegram")));
-  return rows.length;
+  return row?.count ?? 0;
 }
 
 export async function getRecentTelegramTransactions(userId: string, limit: number) {

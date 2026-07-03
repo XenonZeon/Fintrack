@@ -1,7 +1,8 @@
 import "server-only";
-import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lt } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories, transactions } from "@/lib/db/schema";
+import { dateParam } from "@/lib/format/month-nav";
 
 export type TransactionType = "expense" | "income";
 
@@ -14,10 +15,10 @@ export type TransactionInput = {
 };
 
 function monthRange(year: number, month: number) {
-  const start = `${year}-${String(month).padStart(2, "0")}-01`;
+  const start = dateParam(year, month, 1);
   const nextMonth = month === 12 ? 1 : month + 1;
   const nextYear = month === 12 ? year + 1 : year;
-  const end = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+  const end = dateParam(nextYear, nextMonth, 1);
   return { start, end };
 }
 
@@ -48,94 +49,61 @@ export async function getTransactionsForMonth(userId: string, year: number, mont
     .orderBy(desc(transactions.occurredAt), desc(transactions.createdAt));
 }
 
-export async function getMonthSummary(userId: string, year: number, month: number) {
-  const { start, end } = monthRange(year, month);
+export function summarizeMonthTransactions(
+  rows: Awaited<ReturnType<typeof getTransactionsForMonth>>,
+  year: number,
+  month: number
+) {
+  let income = 0;
+  let expense = 0;
+  let incomeCount = 0;
+  let expenseCount = 0;
 
-  const rows = await db
-    .select({
-      type: transactions.type,
-      total: sql<string>`coalesce(sum(${transactions.amountMinor}), 0)`,
-      count: sql<string>`count(*)`,
-    })
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.userId, userId),
-        gte(transactions.occurredAt, start),
-        lt(transactions.occurredAt, end)
-      )
-    )
-    .groupBy(transactions.type);
+  const categoryTotals = new Map<
+    string,
+    { categoryId: string | null; name: string | null; color: string | null; totalMinor: number }
+  >();
 
-  const incomeRow = rows.find((r) => r.type === "income");
-  const expenseRow = rows.find((r) => r.type === "expense");
-  const income = Number(incomeRow?.total ?? 0);
-  const expense = Number(expenseRow?.total ?? 0);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const dailyTotals = new Array<number>(daysInMonth).fill(0);
+
+  for (const row of rows) {
+    if (row.type === "income") {
+      income += row.amountMinor;
+      incomeCount++;
+      continue;
+    }
+
+    expense += row.amountMinor;
+    expenseCount++;
+
+    const key = row.categoryId ?? "none";
+    const existing = categoryTotals.get(key);
+    if (existing) {
+      existing.totalMinor += row.amountMinor;
+    } else {
+      categoryTotals.set(key, {
+        categoryId: row.categoryId,
+        name: row.categoryName,
+        color: row.categoryColor,
+        totalMinor: row.amountMinor,
+      });
+    }
+
+    const day = Number(row.occurredAt.split("-")[2]);
+    dailyTotals[day - 1] += row.amountMinor;
+  }
+
+  const categoryBreakdown = Array.from(categoryTotals.values()).sort(
+    (a, b) => b.totalMinor - a.totalMinor
+  );
+  const dailyBreakdown = dailyTotals.map((totalMinor, i) => ({ day: i + 1, totalMinor }));
 
   return {
-    income,
-    expense,
-    balance: income - expense,
-    incomeCount: Number(incomeRow?.count ?? 0),
-    expenseCount: Number(expenseRow?.count ?? 0),
+    summary: { income, expense, balance: income - expense, incomeCount, expenseCount },
+    categoryBreakdown,
+    dailyBreakdown,
   };
-}
-
-export async function getExpenseByCategory(userId: string, year: number, month: number) {
-  const { start, end } = monthRange(year, month);
-
-  const rows = await db
-    .select({
-      categoryId: transactions.categoryId,
-      categoryName: categories.name,
-      total: sql<string>`coalesce(sum(${transactions.amountMinor}), 0)`,
-    })
-    .from(transactions)
-    .leftJoin(categories, eq(transactions.categoryId, categories.id))
-    .where(
-      and(
-        eq(transactions.userId, userId),
-        eq(transactions.type, "expense"),
-        gte(transactions.occurredAt, start),
-        lt(transactions.occurredAt, end)
-      )
-    )
-    .groupBy(transactions.categoryId, categories.name)
-    .orderBy(desc(sql`sum(${transactions.amountMinor})`));
-
-  return rows.map((r) => ({
-    categoryId: r.categoryId,
-    name: r.categoryName,
-    totalMinor: Number(r.total),
-  }));
-}
-
-export async function getExpenseByDay(userId: string, year: number, month: number) {
-  const { start, end } = monthRange(year, month);
-
-  const rows = await db
-    .select({
-      day: sql<number>`extract(day from ${transactions.occurredAt})::int`,
-      total: sql<string>`coalesce(sum(${transactions.amountMinor}), 0)`,
-    })
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.userId, userId),
-        eq(transactions.type, "expense"),
-        gte(transactions.occurredAt, start),
-        lt(transactions.occurredAt, end)
-      )
-    )
-    .groupBy(sql`extract(day from ${transactions.occurredAt})`);
-
-  const totalsByDay = new Map(rows.map((r) => [r.day, Number(r.total)]));
-  const daysInMonth = new Date(year, month, 0).getDate();
-
-  return Array.from({ length: daysInMonth }, (_, i) => ({
-    day: i + 1,
-    totalMinor: totalsByDay.get(i + 1) ?? 0,
-  }));
 }
 
 export async function createTransaction(userId: string, input: TransactionInput) {

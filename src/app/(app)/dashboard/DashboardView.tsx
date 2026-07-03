@@ -1,66 +1,58 @@
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/auth/current-user";
-import {
-  getExpenseByCategory,
-  getExpenseByDay,
-  getMonthSummary,
-  getTransactionsForMonth,
-} from "@/lib/db/queries/transactions";
+import { Breadcrumb } from "@/components/Breadcrumb";
+import { TransactionsTableHeader } from "@/components/TransactionsTableHeader";
+import { requireCurrentUser } from "@/lib/auth/current-user";
+import { getTransactionsForMonth, summarizeMonthTransactions } from "@/lib/db/queries/transactions";
 import { dayLabel, monthLabel } from "@/lib/format/date-ru";
-import { formatRub } from "@/lib/format/money";
+import { formatRub, formatSignedRub } from "@/lib/format/money";
 import { monthParam, shiftMonth } from "@/lib/format/month-nav";
 import { pluralRu } from "@/lib/format/plural-ru";
 import { ru } from "@/lib/i18n/ru";
 import { CategoryDonut, DailyExpensesChart } from "./DashboardCharts";
 
-function categoryShade(index: number) {
-  const l = Math.max(0.28, 0.82 - index * 0.08);
-  return `oklch(${l.toFixed(3)} 0 0)`;
-}
+const NO_CATEGORY_COLOR = "oklch(0.5 0 0)";
 
 export async function DashboardView({ year, month }: { year: number; month: number }) {
   const prev = shiftMonth(year, month, -1);
   const next = shiftMonth(year, month, 1);
 
-  const user = await getCurrentUser();
-  const userId = user!.id;
+  const user = await requireCurrentUser();
 
-  const [summary, categoryRows, dailyRows, monthTransactions] = await Promise.all([
-    getMonthSummary(userId, year, month),
-    getExpenseByCategory(userId, year, month),
-    getExpenseByDay(userId, year, month),
-    getTransactionsForMonth(userId, year, month),
-  ]);
+  const monthTransactions = await getTransactionsForMonth(user.id, year, month);
+  const { summary, categoryBreakdown, dailyBreakdown } = summarizeMonthTransactions(
+    monthTransactions,
+    year,
+    month
+  );
 
-  const categoryBreakdown = categoryRows
+  const categorySlices = categoryBreakdown
     .filter((c) => c.totalMinor > 0)
-    .map((c, i) => ({
+    .map((c) => ({
       name: c.name ?? ru.transactions.noCategory,
       totalMinor: c.totalMinor,
-      shade: categoryShade(i),
+      color: c.color ?? NO_CATEGORY_COLOR,
     }));
 
-  const budgetUsedPct =
-    summary.income > 0 ? Math.min(100, Math.round((summary.expense / summary.income) * 100)) : 0;
-  const budgetRemainingPct = summary.income > 0 ? Math.max(0, 100 - budgetUsedPct) : 0;
+  const hasIncome = summary.income > 0;
+  const budgetUsedPct = hasIncome
+    ? Math.min(100, Math.round((summary.expense / summary.income) * 100))
+    : summary.expense > 0
+      ? 100
+      : 0;
+  const budgetRemainingPct = 100 - budgetUsedPct;
 
   const recent = monthTransactions.slice(0, 5).map((t) => ({
     id: t.id,
     dayLabel: dayLabel(t.occurredAt),
     category: t.categoryName ?? ru.transactions.noCategory,
     comment: t.comment ?? "",
-    amountLabel: (t.type === "income" ? "+ " : "− ") + formatRub(t.amountMinor) + " ₽",
+    amountLabel: formatSignedRub(t.amountMinor, t.type),
   }));
 
   return (
     <div>
       <div className="mb-16 flex items-center justify-between">
-        <div className="text-[13px]" style={{ color: "var(--app-text-dimmer)" }}>
-          {ru.dashboard.breadcrumb}&nbsp;/&nbsp;
-          <span className="font-semibold" style={{ color: "var(--app-text)" }}>
-            {ru.dashboard.breadcrumbCurrent}
-          </span>
-        </div>
+        <Breadcrumb section={ru.dashboard.breadcrumb} current={ru.dashboard.breadcrumbCurrent} />
         <div
           className="flex items-center gap-1 rounded-lg border p-1.5"
           style={{ background: "var(--app-bg-elevated)", borderColor: "var(--app-border)" }}
@@ -152,7 +144,7 @@ export async function DashboardView({ year, month }: { year: number; month: numb
           >
             {ru.dashboard.byCategory}
           </div>
-          <CategoryDonut data={categoryBreakdown} />
+          <CategoryDonut data={categorySlices} />
         </div>
 
         <div
@@ -165,7 +157,7 @@ export async function DashboardView({ year, month }: { year: number; month: numb
           >
             {ru.dashboard.byDay}
           </div>
-          <DailyExpensesChart data={dailyRows} />
+          <DailyExpensesChart data={dailyBreakdown} />
         </div>
       </div>
 
@@ -181,15 +173,7 @@ export async function DashboardView({ year, month }: { year: number; month: numb
           </Link>
         </div>
 
-        <div
-          className="flex px-5 py-3 text-[11px] uppercase tracking-wide"
-          style={{ color: "var(--app-text-dimmest)", borderBottom: "1px solid var(--app-border-strong)" }}
-        >
-          <div className="w-[90px]">{ru.transactions.columnDate}</div>
-          <div className="w-[160px]">{ru.transactions.columnCategory}</div>
-          <div className="flex-1">{ru.transactions.columnComment}</div>
-          <div className="w-[130px] text-right">{ru.transactions.columnAmount}</div>
-        </div>
+        <TransactionsTableHeader />
 
         {recent.length === 0 && (
           <div className="py-16 text-center text-sm" style={{ color: "var(--app-text-dimmer)" }}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TransactionsTableHeader } from "@/components/TransactionsTableHeader";
 import { ru } from "@/lib/i18n/ru";
 import { TransactionModal, type CategoryOption, type EditableTransaction } from "./TransactionModal";
 
@@ -58,15 +59,7 @@ export function TransactionsClient({
         </button>
       </div>
 
-      <div
-        className="flex px-5 py-3 text-[11px] uppercase tracking-wide"
-        style={{ color: "var(--app-text-dimmest)", borderBottom: "1px solid var(--app-border-strong)" }}
-      >
-        <div className="w-[90px]">{ru.transactions.columnDate}</div>
-        <div className="w-[160px]">{ru.transactions.columnCategory}</div>
-        <div className="flex-1">{ru.transactions.columnComment}</div>
-        <div className="w-[130px] text-right">{ru.transactions.columnAmount}</div>
-      </div>
+      <TransactionsTableHeader />
 
       {rows.length === 0 && (
         <div className="py-16 text-center text-sm" style={{ color: "var(--app-text-dimmer)" }}>

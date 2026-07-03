@@ -1,4 +1,6 @@
 import "server-only";
+import { cache } from "react";
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/server";
 
 export type CurrentUser = { id: string; email: string; name: string };
@@ -15,10 +17,16 @@ function getDevUser(): CurrentUser | null {
   };
 }
 
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const devUser = getDevUser();
   if (devUser) return devUser;
 
   const { data: session } = await auth.getSession();
   return session?.user ?? null;
+});
+
+export async function requireCurrentUser(): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/auth/sign-in");
+  return user;
 }

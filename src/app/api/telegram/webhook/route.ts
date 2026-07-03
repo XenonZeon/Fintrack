@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { consumeLinkToken } from "@/lib/db/queries/telegram";
 
 const LINK_TOKEN_PATTERN = /^[A-Z0-9]{4}-[A-Z0-9]{4}$/i;
@@ -7,7 +7,7 @@ type TelegramUpdate = {
   message?: {
     text?: string;
     chat: { id: number };
-    from: { id: number; username?: string };
+    from?: { id: number; username?: string };
   };
 };
 
@@ -42,40 +42,50 @@ async function tryLinkToken(
   }
 }
 
+async function handleUpdate(update: TelegramUpdate) {
+  const message = update.message;
+  const text = message?.text?.trim();
+
+  if (!text || !message || !message.from) return;
+
+  if (text.startsWith("/start")) {
+    const token = text.split(" ")[1]?.trim();
+
+    if (!token) {
+      await sendMessage(
+        message.chat.id,
+        "Привет! Открой страницу «Telegram-бот» в Финтрекере и пришли мне код оттуда (например, A3F7-9K2Q)."
+      );
+    } else {
+      await tryLinkToken(token, {
+        telegramId: message.from.id,
+        chatId: message.chat.id,
+        username: message.from.username,
+      });
+    }
+  } else if (LINK_TOKEN_PATTERN.test(text)) {
+    await tryLinkToken(text, {
+      telegramId: message.from.id,
+      chatId: message.chat.id,
+      username: message.from.username,
+    });
+  }
+}
+
 export async function POST(request: NextRequest) {
   const secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
   if (secret !== process.env.TELEGRAM_WEBHOOK_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const update = (await request.json()) as TelegramUpdate;
-  const message = update.message;
-  const text = message?.text?.trim();
-
-  if (text && message) {
-    if (text.startsWith("/start")) {
-      const token = text.split(" ")[1]?.trim();
-
-      if (!token) {
-        await sendMessage(
-          message.chat.id,
-          "Привет! Открой страницу «Telegram-бот» в Финтрекере и пришли мне код оттуда (например, A3F7-9K2Q)."
-        );
-      } else {
-        await tryLinkToken(token, {
-          telegramId: message.from.id,
-          chatId: message.chat.id,
-          username: message.from.username,
-        });
-      }
-    } else if (LINK_TOKEN_PATTERN.test(text)) {
-      await tryLinkToken(text, {
-        telegramId: message.from.id,
-        chatId: message.chat.id,
-        username: message.from.username,
-      });
-    }
+  let update: TelegramUpdate;
+  try {
+    update = (await request.json()) as TelegramUpdate;
+  } catch {
+    return NextResponse.json({ ok: true });
   }
+
+  after(() => handleUpdate(update));
 
   return NextResponse.json({ ok: true });
 }

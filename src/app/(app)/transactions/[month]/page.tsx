@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { parseMonthParam } from "@/lib/format/month-nav";
 import { TransactionsView } from "../TransactionsView";
 
@@ -9,6 +10,8 @@ export default async function TransactionsMonthPage({
   params: Promise<{ month: string }>;
 }) {
   const { month: monthParamValue } = await params;
-  const { year, month } = parseMonthParam(monthParamValue);
-  return <TransactionsView year={year} month={month} />;
+  const parsed = parseMonthParam(monthParamValue);
+  if (!parsed) notFound();
+
+  return <TransactionsView year={parsed.year} month={parsed.month} />;
 }

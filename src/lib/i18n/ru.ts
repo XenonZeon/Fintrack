@@ -87,6 +87,9 @@ export const ru = {
     genericError: "Не удалось сохранить транзакцию",
     deleteError: "Не удалось удалить транзакцию",
     categoryRequired: "Выберите категорию",
+    categoryInvalid: "Категория недоступна",
+    amountInvalid: "Введите сумму больше нуля",
+    dateInvalid: "Такой даты не существует",
   },
   telegram: {
     breadcrumb: "Обзор",

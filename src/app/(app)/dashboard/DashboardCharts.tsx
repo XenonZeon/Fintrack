@@ -14,7 +14,7 @@ import {
 import { formatRub } from "@/lib/format/money";
 import { ru } from "@/lib/i18n/ru";
 
-export type CategorySlice = { name: string; totalMinor: number; shade: string };
+export type CategorySlice = { name: string; totalMinor: number; color: string };
 export type DailyPoint = { day: number; totalMinor: number };
 
 const tooltipStyle = {
@@ -45,7 +45,7 @@ export function CategoryDonut({ data }: { data: CategorySlice[] }) {
                   endAngle={-270}
                 >
                   {data.map((slice) => (
-                    <Cell key={slice.name} fill={slice.shade} />
+                    <Cell key={slice.name} fill={slice.color} />
                   ))}
                 </Pie>
                 <Tooltip
@@ -69,7 +69,7 @@ export function CategoryDonut({ data }: { data: CategorySlice[] }) {
         )}
         {data.map((slice) => (
           <div key={slice.name} className="flex items-center gap-2.5 text-[13px]">
-            <div className="h-2 w-2 flex-none rounded-full" style={{ background: slice.shade }} />
+            <div className="h-2 w-2 flex-none rounded-full" style={{ background: slice.color }} />
             <div className="flex-1" style={{ color: "var(--app-text-dim)" }}>
               {slice.name}
             </div>
