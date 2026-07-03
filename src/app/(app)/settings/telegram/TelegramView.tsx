@@ -217,7 +217,7 @@ export async function TelegramView() {
                   1
                 </div>
                 <div className="text-sm leading-relaxed" style={{ color: "var(--app-text-dim)" }}>
-                  {ru.telegram.step1Pre} <span className="font-semibold">@{botUsername}</span>{" "}
+                  {ru.telegram.step1Pre} <span className="font-semibold bg-[#FAF9F6]">@{botUsername}</span>{" "}
                   {ru.telegram.step1Post}
                 </div>
               </div>
@@ -229,7 +229,7 @@ export async function TelegramView() {
                   2
                 </div>
                 <div className="text-sm leading-relaxed" style={{ color: "var(--app-text-dim)" }}>
-                  {ru.telegram.step2Pre} <span className="font-semibold">/start</span>{" "}
+                  {ru.telegram.step2Pre} <span className="font-semibold bg-[#FAF9F6]">/start</span>{" "}
                   {ru.telegram.step2Mid}
                 </div>
               </div>
