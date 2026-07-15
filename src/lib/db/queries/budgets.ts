@@ -26,25 +26,35 @@ export async function upsertBudgetLimits(
   const toUpsert = limits.filter((l) => l.limitMinor > 0);
   const toClear = limits.filter((l) => l.limitMinor === 0).map((l) => l.categoryId);
 
-  if (toUpsert.length > 0) {
-    await db
-      .insert(budgets)
-      .values(toUpsert.map((l) => ({ userId, categoryId: l.categoryId, periodMonth, limitMinor: l.limitMinor })))
-      .onConflictDoUpdate({
-        target: [budgets.userId, budgets.categoryId, budgets.periodMonth],
-        set: { limitMinor: sql`excluded.limit_minor` },
-      });
-  }
+  const upsertQuery = toUpsert.length > 0
+    ? db
+        .insert(budgets)
+        .values(toUpsert.map((l) => ({ userId, categoryId: l.categoryId, periodMonth, limitMinor: l.limitMinor })))
+        .onConflictDoUpdate({
+          target: [budgets.userId, budgets.categoryId, budgets.periodMonth],
+          set: { limitMinor: sql`excluded.limit_minor` },
+        })
+    : null;
 
-  if (toClear.length > 0) {
-    await db
-      .delete(budgets)
-      .where(
-        and(
-          eq(budgets.userId, userId),
-          eq(budgets.periodMonth, periodMonth),
-          inArray(budgets.categoryId, toClear)
+  const clearQuery = toClear.length > 0
+    ? db
+        .delete(budgets)
+        .where(
+          and(
+            eq(budgets.userId, userId),
+            eq(budgets.periodMonth, periodMonth),
+            inArray(budgets.categoryId, toClear)
+          )
         )
-      );
+    : null;
+
+  // db.transaction() is unsupported over the neon-http driver; db.batch() runs both
+  // statements as a single atomic HTTP transaction so a save can't half-apply.
+  if (upsertQuery && clearQuery) {
+    await db.batch([upsertQuery, clearQuery]);
+  } else if (upsertQuery) {
+    await upsertQuery;
+  } else if (clearQuery) {
+    await clearQuery;
   }
 }

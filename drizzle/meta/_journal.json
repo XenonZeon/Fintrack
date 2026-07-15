@@ -50,6 +50,13 @@
       "when": 1784117901288,
       "tag": "0006_rainy_mikhail_rasputin",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784121167690,
+      "tag": "0007_marvelous_skaar",
+      "breakpoints": true
     }
   ]
 }

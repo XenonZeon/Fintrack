@@ -3,6 +3,7 @@
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getCategoriesForUser } from "@/lib/db/queries/categories";
 import { upsertBudgetLimits, type BudgetLimitInput } from "@/lib/db/queries/budgets";
+import { parseRublesToMinor } from "@/lib/format/money";
 import { ru } from "@/lib/i18n/ru";
 import { revalidateBudgetPaths } from "@/lib/revalidate-budget";
 
@@ -19,15 +20,19 @@ export async function saveBudgetLimitsAction(
 
   const limits: BudgetLimitInput[] = [];
   for (const categoryId of expenseCategoryIds) {
-    const raw = formData.get(`limit_${categoryId}`);
-    const rubles = Number(raw ?? 0);
-    if (!Number.isFinite(rubles) || rubles < 0) {
+    const limitMinor = parseRublesToMinor(formData.get(`limit_${categoryId}`));
+    if (limitMinor === null || limitMinor < 0) {
       return { error: ru.budgetModal.invalidLimit };
     }
-    limits.push({ categoryId, limitMinor: Math.round(rubles * 100) });
+    limits.push({ categoryId, limitMinor });
   }
 
-  await upsertBudgetLimits(user.id, year, month, limits);
+  try {
+    await upsertBudgetLimits(user.id, year, month, limits);
+  } catch {
+    return { error: ru.budgetModal.genericError };
+  }
+
   revalidateBudgetPaths();
   return null;
 }

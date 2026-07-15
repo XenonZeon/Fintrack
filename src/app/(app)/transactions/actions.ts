@@ -8,20 +8,21 @@ import {
   updateTransaction,
   type TransactionInput,
 } from "@/lib/db/queries/transactions";
+import { parseRublesToMinor } from "@/lib/format/money";
 import { dateParam } from "@/lib/format/month-nav";
 import { ru } from "@/lib/i18n/ru";
 import { revalidateTransactionPaths } from "@/lib/revalidate-transactions";
 
 function parseInput(formData: FormData): TransactionInput | { error: string } {
   const type = formData.get("type") === "income" ? "income" : "expense";
-  const rubles = Number(formData.get("amount"));
+  const amountMinor = parseRublesToMinor(formData.get("amount"));
   const day = Number(formData.get("day"));
   const year = Number(formData.get("year"));
   const month = Number(formData.get("month"));
   const comment = (formData.get("comment") as string) || null;
   const categoryId = (formData.get("categoryId") as string) || null;
 
-  if (!Number.isFinite(rubles) || rubles <= 0) {
+  if (amountMinor === null || amountMinor <= 0) {
     return { error: ru.transactionModal.amountInvalid };
   }
 
@@ -36,7 +37,7 @@ function parseInput(formData: FormData): TransactionInput | { error: string } {
 
   return {
     type,
-    amountMinor: Math.round(rubles * 100),
+    amountMinor,
     occurredAt,
     comment,
     categoryId,

@@ -60,7 +60,7 @@ export const budgets = pgTable(
     userId: text("user_id").notNull(),
     categoryId: uuid("category_id")
       .notNull()
-      .references(() => categories.id),
+      .references(() => categories.id, { onDelete: "cascade" }),
     periodMonth: date("period_month").notNull(),
     limitMinor: integer("limit_minor").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
