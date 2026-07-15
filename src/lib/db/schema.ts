@@ -52,3 +52,24 @@ export const telegramLinkTokens = pgTable("telegram_link_tokens", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const budgets = pgTable(
+  "budgets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => categories.id),
+    periodMonth: date("period_month").notNull(),
+    limitMinor: integer("limit_minor").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique("budgets_user_id_category_id_period_month_unique").on(
+      table.userId,
+      table.categoryId,
+      table.periodMonth
+    ),
+  ]
+);

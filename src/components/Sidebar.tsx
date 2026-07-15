@@ -6,10 +6,10 @@ import { ru } from "@/lib/i18n/ru";
 import { signOut } from "@/app/(app)/actions";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: ru.sidebar.dashboard, enabled: true },
-  { href: "/transactions", label: ru.sidebar.transactions, enabled: true },
-  { href: null, label: ru.sidebar.budget, enabled: false, tag: ru.sidebar.budgetSoon },
-  { href: "/settings/telegram", label: ru.sidebar.telegramBot, enabled: true },
+  { href: "/dashboard", label: ru.sidebar.dashboard },
+  { href: "/transactions", label: ru.sidebar.transactions },
+  { href: "/budget", label: ru.sidebar.budget },
+  { href: "/settings/telegram", label: ru.sidebar.telegramBot },
 ] as const;
 
 export function Sidebar({ userName }: { userName: string }) {
@@ -49,26 +49,6 @@ export function Sidebar({ userName }: { userName: string }) {
       </div>
       <div className="mb-9 flex flex-col gap-0.5">
         {NAV_ITEMS.map((item) => {
-          if (!item.enabled) {
-            return (
-              <div
-                key={item.label}
-                className="flex items-center gap-3 rounded-md px-3.5 py-2.75"
-                style={{ color: "var(--app-text-dimmer)" }}
-              >
-                <div className="h-1.5 w-1.5 rounded-full" />
-                <div className="text-sm">
-                  {item.label}
-                  {"tag" in item && item.tag && (
-                    <span className="ml-1 text-[10px]" style={{ color: "var(--app-text-faint)" }}>
-                      {item.tag}
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          }
-
           const active = pathname.startsWith(item.href);
           return (
             <Link
