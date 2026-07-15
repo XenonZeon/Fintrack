@@ -1,6 +1,6 @@
 import "server-only";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { db } from "@/lib/db";
+import type { Db } from "@/lib/db";
 import { budgets } from "@/lib/db/schema";
 import { dateParam } from "@/lib/format/month-nav";
 
@@ -10,13 +10,14 @@ function periodMonthParam(year: number, month: number) {
   return dateParam(year, month, 1);
 }
 
-export async function getBudgetsForMonth(userId: string, year: number, month: number) {
+export async function getBudgetsForMonth(db: Db, userId: string, year: number, month: number) {
   return db.query.budgets.findMany({
     where: and(eq(budgets.userId, userId), eq(budgets.periodMonth, periodMonthParam(year, month))),
   });
 }
 
 export async function upsertBudgetLimits(
+  db: Db,
   userId: string,
   year: number,
   month: number,

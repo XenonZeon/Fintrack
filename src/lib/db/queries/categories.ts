@@ -1,6 +1,6 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
-import { db } from "@/lib/db";
+import type { Db } from "@/lib/db";
 import { categories } from "@/lib/db/schema";
 
 const DEFAULT_EXPENSE_CATEGORIES = [
@@ -14,20 +14,20 @@ const DEFAULT_EXPENSE_CATEGORIES = [
   { name: "Прочее", icon: "📦", color: "#6b7280" },
 ];
 
-export async function getCategoriesForUser(userId: string) {
+export async function getCategoriesForUser(db: Db, userId: string) {
   return db.query.categories.findMany({
     where: eq(categories.userId, userId),
   });
 }
 
-export async function getCategoryById(userId: string, id: string) {
+export async function getCategoryById(db: Db, userId: string, id: string) {
   return db.query.categories.findFirst({
     where: and(eq(categories.id, id), eq(categories.userId, userId)),
   });
 }
 
-export async function seedDefaultCategoriesIfMissing(userId: string) {
-  const existing = await getCategoriesForUser(userId);
+export async function seedDefaultCategoriesIfMissing(db: Db, userId: string) {
+  const existing = await getCategoriesForUser(db, userId);
   if (existing.length > 0) return;
 
   await db

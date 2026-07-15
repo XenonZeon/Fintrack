@@ -57,6 +57,13 @@
       "when": 1784121167690,
       "tag": "0007_marvelous_skaar",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784137417464,
+      "tag": "0008_slow_stephen_strange",
+      "breakpoints": true
     }
   ]
 }

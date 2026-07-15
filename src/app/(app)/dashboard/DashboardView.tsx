@@ -3,6 +3,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { TransactionsTableHeader } from "@/components/TransactionsTableHeader";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { getTransactionsForMonth, summarizeMonthTransactions } from "@/lib/db/queries/transactions";
+import { getUserDb } from "@/lib/db/user-db";
 import { dayLabel, monthLabel } from "@/lib/format/date-ru";
 import { formatRub, formatSignedRub } from "@/lib/format/money";
 import { monthParam, shiftMonth } from "@/lib/format/month-nav";
@@ -18,8 +19,9 @@ export async function DashboardView({ year, month }: { year: number; month: numb
   const next = shiftMonth(year, month, 1);
 
   const user = await requireCurrentUser();
+  const db = await getUserDb();
 
-  const monthTransactions = await getTransactionsForMonth(user.id, year, month);
+  const monthTransactions = await getTransactionsForMonth(db, user.id, year, month);
   const { summary, categoryBreakdown, dailyBreakdown } = summarizeMonthTransactions(
     monthTransactions,
     year,

@@ -4,6 +4,7 @@ import { requireCurrentUser } from "@/lib/auth/current-user";
 import { getBudgetsForMonth } from "@/lib/db/queries/budgets";
 import { getCategoriesForUser } from "@/lib/db/queries/categories";
 import { getTransactionsForMonth, summarizeMonthTransactions } from "@/lib/db/queries/transactions";
+import { getUserDb } from "@/lib/db/user-db";
 import { monthLabel } from "@/lib/format/date-ru";
 import { monthParam, shiftMonth } from "@/lib/format/month-nav";
 import { ru } from "@/lib/i18n/ru";
@@ -11,11 +12,12 @@ import { BudgetClient, type BudgetCategory } from "./BudgetClient";
 
 export async function BudgetView({ year, month }: { year: number; month: number }) {
   const user = await requireCurrentUser();
+  const db = await getUserDb();
 
   const [allCategories, budgetRows, monthTransactions] = await Promise.all([
-    getCategoriesForUser(user.id),
-    getBudgetsForMonth(user.id, year, month),
-    getTransactionsForMonth(user.id, year, month),
+    getCategoriesForUser(db, user.id),
+    getBudgetsForMonth(db, user.id, year, month),
+    getTransactionsForMonth(db, user.id, year, month),
   ]);
 
   const { categoryBreakdown } = summarizeMonthTransactions(monthTransactions, year, month);

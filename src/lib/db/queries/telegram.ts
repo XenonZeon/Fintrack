@@ -1,7 +1,7 @@
 import "server-only";
 import { randomInt } from "crypto";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { db } from "@/lib/db";
+import type { Db } from "@/lib/db";
 import { categories, telegramAccounts, telegramLinkTokens, transactions } from "@/lib/db/schema";
 
 const TOKEN_TTL_MS = 15 * 60 * 1000;
@@ -15,20 +15,20 @@ function generateTokenCode() {
   return `${code.slice(0, 4)}-${code.slice(4)}`;
 }
 
-export async function getTelegramAccount(userId: string) {
+export async function getTelegramAccount(db: Db, userId: string) {
   return db.query.telegramAccounts.findFirst({
     where: eq(telegramAccounts.userId, userId),
   });
 }
 
-export async function getUserIdByTelegramId(telegramId: number) {
+export async function getUserIdByTelegramId(db: Db, telegramId: number) {
   const row = await db.query.telegramAccounts.findFirst({
     where: eq(telegramAccounts.telegramId, telegramId),
   });
   return row?.userId ?? null;
 }
 
-export async function countTelegramTransactions(userId: string) {
+export async function countTelegramTransactions(db: Db, userId: string) {
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(transactions)
@@ -36,7 +36,7 @@ export async function countTelegramTransactions(userId: string) {
   return row?.count ?? 0;
 }
 
-export async function getRecentTelegramTransactions(userId: string, limit: number) {
+export async function getRecentTelegramTransactions(db: Db, userId: string, limit: number) {
   return db
     .select({
       id: transactions.id,
@@ -53,11 +53,11 @@ export async function getRecentTelegramTransactions(userId: string, limit: numbe
     .limit(limit);
 }
 
-export async function unlinkTelegramAccount(userId: string) {
+export async function unlinkTelegramAccount(db: Db, userId: string) {
   await db.delete(telegramAccounts).where(eq(telegramAccounts.userId, userId));
 }
 
-export async function issueLinkToken(userId: string) {
+export async function issueLinkToken(db: Db, userId: string) {
   const token = generateTokenCode();
   const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
 
@@ -70,6 +70,7 @@ export async function issueLinkToken(userId: string) {
 }
 
 export async function consumeLinkToken(
+  db: Db,
   token: string,
   telegram: { telegramId: number; chatId: number; username: string | null }
 ) {

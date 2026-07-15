@@ -7,6 +7,7 @@ import {
   getTelegramAccount,
   issueLinkToken,
 } from "@/lib/db/queries/telegram";
+import { getUserDb } from "@/lib/db/user-db";
 import { dayLabel, fullDateLabel } from "@/lib/format/date-ru";
 import { formatSignedRub } from "@/lib/format/money";
 import { pluralRu } from "@/lib/format/plural-ru";
@@ -53,13 +54,14 @@ function HowToUseCard() {
 export async function TelegramView() {
   const user = await requireCurrentUser();
   const userId = user.id;
+  const db = await getUserDb();
 
-  const account = await getTelegramAccount(userId);
+  const account = await getTelegramAccount(db, userId);
 
   if (account) {
     const [txCount, recent] = await Promise.all([
-      countTelegramTransactions(userId),
-      getRecentTelegramTransactions(userId, 3),
+      countTelegramTransactions(db, userId),
+      getRecentTelegramTransactions(db, userId, 3),
     ]);
 
     return (
@@ -175,7 +177,7 @@ export async function TelegramView() {
     );
   }
 
-  const { token, expiresAt } = await issueLinkToken(userId);
+  const { token, expiresAt } = await issueLinkToken(db, userId);
   const botUsername = process.env.TELEGRAM_BOT_USERNAME!;
   const deepLink = `https://t.me/${botUsername}?start=${token}`;
   const qrDataUrl = await QRCode.toDataURL(deepLink, { margin: 1, width: 320 });

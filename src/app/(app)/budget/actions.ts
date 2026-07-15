@@ -3,6 +3,7 @@
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getCategoriesForUser } from "@/lib/db/queries/categories";
 import { upsertBudgetLimits, type BudgetLimitInput } from "@/lib/db/queries/budgets";
+import { getUserDb } from "@/lib/db/user-db";
 import { parseRublesToMinor } from "@/lib/format/money";
 import { ru } from "@/lib/i18n/ru";
 import { revalidateBudgetPaths } from "@/lib/revalidate-budget";
@@ -15,7 +16,8 @@ export async function saveBudgetLimitsAction(
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
 
-  const userCategories = await getCategoriesForUser(user.id);
+  const db = await getUserDb();
+  const userCategories = await getCategoriesForUser(db, user.id);
   const expenseCategoryIds = userCategories.filter((c) => c.kind === "expense").map((c) => c.id);
 
   const limits: BudgetLimitInput[] = [];
@@ -28,7 +30,7 @@ export async function saveBudgetLimitsAction(
   }
 
   try {
-    await upsertBudgetLimits(user.id, year, month, limits);
+    await upsertBudgetLimits(db, user.id, year, month, limits);
   } catch {
     return { error: ru.budgetModal.genericError };
   }

@@ -1,6 +1,6 @@
 import "server-only";
 import { and, desc, eq, gte, lt } from "drizzle-orm";
-import { db } from "@/lib/db";
+import type { Db } from "@/lib/db";
 import { categories, transactions } from "@/lib/db/schema";
 import { dateParam } from "@/lib/format/month-nav";
 
@@ -23,7 +23,7 @@ function monthRange(year: number, month: number) {
   return { start, end };
 }
 
-export async function getTransactionsForMonth(userId: string, year: number, month: number) {
+export async function getTransactionsForMonth(db: Db, userId: string, year: number, month: number) {
   const { start, end } = monthRange(year, month);
 
   return db
@@ -107,7 +107,7 @@ export function summarizeMonthTransactions(
   };
 }
 
-export async function createTransaction(userId: string, input: TransactionInput) {
+export async function createTransaction(db: Db, userId: string, input: TransactionInput) {
   const [row] = await db
     .insert(transactions)
     .values({
@@ -123,20 +123,20 @@ export async function createTransaction(userId: string, input: TransactionInput)
   return row.id;
 }
 
-export async function getTransactionById(userId: string, id: string) {
+export async function getTransactionById(db: Db, userId: string, id: string) {
   return db.query.transactions.findFirst({
     where: and(eq(transactions.id, id), eq(transactions.userId, userId)),
   });
 }
 
-export async function updateTransactionCategory(userId: string, id: string, categoryId: string) {
+export async function updateTransactionCategory(db: Db, userId: string, id: string, categoryId: string) {
   await db
     .update(transactions)
     .set({ categoryId })
     .where(and(eq(transactions.id, id), eq(transactions.userId, userId)));
 }
 
-export async function updateTransaction(userId: string, id: string, input: TransactionInput) {
+export async function updateTransaction(db: Db, userId: string, id: string, input: TransactionInput) {
   await db
     .update(transactions)
     .set({
@@ -149,6 +149,6 @@ export async function updateTransaction(userId: string, id: string, input: Trans
     .where(and(eq(transactions.id, id), eq(transactions.userId, userId)));
 }
 
-export async function deleteTransaction(userId: string, id: string) {
+export async function deleteTransaction(db: Db, userId: string, id: string) {
   await db.delete(transactions).where(and(eq(transactions.id, id), eq(transactions.userId, userId)));
 }

@@ -3,6 +3,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { getCategoriesForUser } from "@/lib/db/queries/categories";
 import { getTransactionsForMonth } from "@/lib/db/queries/transactions";
+import { getUserDb } from "@/lib/db/user-db";
 import { dayLabel, dayOfMonth, monthLabel } from "@/lib/format/date-ru";
 import { formatSignedRub } from "@/lib/format/money";
 import { monthParam, shiftMonth } from "@/lib/format/month-nav";
@@ -11,10 +12,11 @@ import { TransactionsClient } from "./TransactionsClient";
 
 export async function TransactionsView({ year, month }: { year: number; month: number }) {
   const user = await requireCurrentUser();
+  const db = await getUserDb();
 
   const [monthTransactions, allCategories] = await Promise.all([
-    getTransactionsForMonth(user.id, year, month),
-    getCategoriesForUser(user.id),
+    getTransactionsForMonth(db, user.id, year, month),
+    getCategoriesForUser(db, user.id),
   ]);
 
   const expenseCategories = allCategories

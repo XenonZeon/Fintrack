@@ -1,6 +1,7 @@
 "use server";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
+import type { Db } from "@/lib/db";
 import { getCategoryById } from "@/lib/db/queries/categories";
 import {
   createTransaction,
@@ -8,6 +9,7 @@ import {
   updateTransaction,
   type TransactionInput,
 } from "@/lib/db/queries/transactions";
+import { getUserDb } from "@/lib/db/user-db";
 import { parseRublesToMinor } from "@/lib/format/money";
 import { dateParam } from "@/lib/format/month-nav";
 import { ru } from "@/lib/i18n/ru";
@@ -47,12 +49,13 @@ function parseInput(formData: FormData): TransactionInput | { error: string } {
 }
 
 async function validateCategoryOwnership(
+  db: Db,
   userId: string,
   input: TransactionInput
 ): Promise<{ error: string } | null> {
   if (input.type !== "expense" || !input.categoryId) return null;
 
-  const category = await getCategoryById(userId, input.categoryId);
+  const category = await getCategoryById(db, userId, input.categoryId);
   if (!category || category.kind !== "expense") {
     return { error: ru.transactionModal.categoryInvalid };
   }
@@ -68,10 +71,11 @@ export async function createTransactionAction(
   const input = parseInput(formData);
   if ("error" in input) return input;
 
-  const categoryError = await validateCategoryOwnership(user.id, input);
+  const db = await getUserDb();
+  const categoryError = await validateCategoryOwnership(db, user.id, input);
   if (categoryError) return categoryError;
 
-  await createTransaction(user.id, input);
+  await createTransaction(db, user.id, input);
   revalidateTransactionPaths();
   return null;
 }
@@ -86,10 +90,11 @@ export async function updateTransactionAction(
   const input = parseInput(formData);
   if ("error" in input) return input;
 
-  const categoryError = await validateCategoryOwnership(user.id, input);
+  const db = await getUserDb();
+  const categoryError = await validateCategoryOwnership(db, user.id, input);
   if (categoryError) return categoryError;
 
-  await updateTransaction(user.id, id, input);
+  await updateTransaction(db, user.id, id, input);
   revalidateTransactionPaths();
   return null;
 }
@@ -98,7 +103,8 @@ export async function deleteTransactionAction(id: string): Promise<{ error: stri
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
 
-  await deleteTransaction(user.id, id);
+  const db = await getUserDb();
+  await deleteTransaction(db, user.id, id);
   revalidateTransactionPaths();
   return null;
 }

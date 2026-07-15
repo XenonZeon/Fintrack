@@ -1,4 +1,5 @@
 import { after, NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
 import { getCategoriesForUser } from "@/lib/db/queries/categories";
 import { consumeLinkToken, getUserIdByTelegramId } from "@/lib/db/queries/telegram";
 import {
@@ -88,7 +89,7 @@ function categoryConfirmKeyboard(transactionId: string): InlineKeyboard {
 }
 
 async function expenseCategoriesForUser(userId: string) {
-  const categories = await getCategoriesForUser(userId);
+  const categories = await getCategoriesForUser(db, userId);
   return categories.filter((c) => c.kind === "expense").sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
@@ -109,7 +110,7 @@ async function tryLinkToken(
   rawToken: string,
   telegram: { telegramId: number; chatId: number; username?: string }
 ) {
-  const userId = await consumeLinkToken(rawToken.trim().toUpperCase(), {
+  const userId = await consumeLinkToken(db, rawToken.trim().toUpperCase(), {
     telegramId: telegram.telegramId,
     chatId: telegram.chatId,
     username: telegram.username ?? null,
@@ -126,7 +127,7 @@ async function tryLinkToken(
 }
 
 async function handleTransactionMessage(text: string, telegramId: number, chatId: number) {
-  const userId = await getUserIdByTelegramId(telegramId);
+  const userId = await getUserIdByTelegramId(db, telegramId);
   if (!userId) {
     await sendMessage(
       chatId,
@@ -145,7 +146,7 @@ async function handleTransactionMessage(text: string, telegramId: number, chatId
   let categoryName: string | null = null;
 
   if (parsed.type === "expense") {
-    const userCategories = await getCategoriesForUser(userId);
+    const userCategories = await getCategoriesForUser(db, userId);
     const targetName = parsed.categoryKeyword ?? FALLBACK_CATEGORY_NAME;
     const category =
       userCategories.find((c) => c.kind === "expense" && c.name === targetName) ??
@@ -155,7 +156,7 @@ async function handleTransactionMessage(text: string, telegramId: number, chatId
     categoryName = category?.name ?? null;
   }
 
-  const transactionId = await createTransaction(userId, {
+  const transactionId = await createTransaction(db, userId, {
     type: parsed.type,
     amountMinor: parsed.amountMinor,
     occurredAt: todayDateParam(),
@@ -198,7 +199,7 @@ async function handleCallbackQuery(callbackQuery: NonNullable<TelegramUpdate["ca
 
   if (data.startsWith("catfix:")) {
     const transactionId = data.slice("catfix:".length);
-    const userId = await getUserIdByTelegramId(callbackQuery.from.id);
+    const userId = await getUserIdByTelegramId(db, callbackQuery.from.id);
     if (!userId) {
       await answerCallbackQuery(callbackQuery.id, "Бот не подключён к аккаунту");
       return;
@@ -212,7 +213,7 @@ async function handleCallbackQuery(callbackQuery: NonNullable<TelegramUpdate["ca
 
   if (data.startsWith("setcat:")) {
     const [, transactionId, indexStr] = data.split(":");
-    const userId = await getUserIdByTelegramId(callbackQuery.from.id);
+    const userId = await getUserIdByTelegramId(db, callbackQuery.from.id);
     if (!userId) {
       await answerCallbackQuery(callbackQuery.id, "Бот не подключён к аккаунту");
       return;
@@ -220,7 +221,7 @@ async function handleCallbackQuery(callbackQuery: NonNullable<TelegramUpdate["ca
 
     const [categories, transaction] = await Promise.all([
       expenseCategoriesForUser(userId),
-      getTransactionById(userId, transactionId),
+      getTransactionById(db, userId, transactionId),
     ]);
     const category = categories[Number(indexStr)];
     if (!category || !transaction) {
@@ -228,7 +229,7 @@ async function handleCallbackQuery(callbackQuery: NonNullable<TelegramUpdate["ca
       return;
     }
 
-    await updateTransactionCategory(userId, transactionId, category.id);
+    await updateTransactionCategory(db, userId, transactionId, category.id);
     revalidateTransactionPaths();
     await editMessageText(chatId, messageId, `Категория обновлена: ${category.name}`);
     await answerCallbackQuery(callbackQuery.id, "Готово");
