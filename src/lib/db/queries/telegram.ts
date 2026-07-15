@@ -61,8 +61,10 @@ export async function issueLinkToken(userId: string) {
   const token = generateTokenCode();
   const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
 
-  await db.delete(telegramLinkTokens).where(eq(telegramLinkTokens.userId, userId));
-  await db.insert(telegramLinkTokens).values({ token, userId, expiresAt });
+  await db.batch([
+    db.delete(telegramLinkTokens).where(eq(telegramLinkTokens.userId, userId)),
+    db.insert(telegramLinkTokens).values({ token, userId, expiresAt }),
+  ]);
 
   return { token, expiresAt };
 }
@@ -76,27 +78,27 @@ export async function consumeLinkToken(
   });
   if (!row || row.expiresAt < new Date()) return null;
 
-  await db.delete(telegramAccounts).where(eq(telegramAccounts.telegramId, telegram.telegramId));
-
-  await db
-    .insert(telegramAccounts)
-    .values({
-      userId: row.userId,
-      telegramId: telegram.telegramId,
-      chatId: telegram.chatId,
-      telegramUsername: telegram.username,
-    })
-    .onConflictDoUpdate({
-      target: telegramAccounts.userId,
-      set: {
+  await db.batch([
+    db.delete(telegramAccounts).where(eq(telegramAccounts.telegramId, telegram.telegramId)),
+    db
+      .insert(telegramAccounts)
+      .values({
+        userId: row.userId,
         telegramId: telegram.telegramId,
         chatId: telegram.chatId,
         telegramUsername: telegram.username,
-        linkedAt: new Date(),
-      },
-    });
-
-  await db.delete(telegramLinkTokens).where(eq(telegramLinkTokens.token, token));
+      })
+      .onConflictDoUpdate({
+        target: telegramAccounts.userId,
+        set: {
+          telegramId: telegram.telegramId,
+          chatId: telegram.chatId,
+          telegramUsername: telegram.username,
+          linkedAt: new Date(),
+        },
+      }),
+    db.delete(telegramLinkTokens).where(eq(telegramLinkTokens.token, token)),
+  ]);
 
   return row.userId;
 }

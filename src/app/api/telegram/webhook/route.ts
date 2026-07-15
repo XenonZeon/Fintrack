@@ -171,7 +171,8 @@ async function handleTransactionMessage(text: string, telegramId: number, chatId
     parts.push(parsed.comment);
   }
 
-  const isUncertainFallback = parsed.type === "expense" && !parsed.categoryKeyword && categoryName === FALLBACK_CATEGORY_NAME;
+  const isUncertainFallback =
+    parsed.type === "expense" && (!categoryId || (!parsed.categoryKeyword && categoryName === FALLBACK_CATEGORY_NAME));
   await sendMessage(
     chatId,
     `✅ Добавлено: ${parts.join(" · ")}`,
@@ -217,9 +218,11 @@ async function handleCallbackQuery(callbackQuery: NonNullable<TelegramUpdate["ca
       return;
     }
 
-    const categories = await expenseCategoriesForUser(userId);
+    const [categories, transaction] = await Promise.all([
+      expenseCategoriesForUser(userId),
+      getTransactionById(userId, transactionId),
+    ]);
     const category = categories[Number(indexStr)];
-    const transaction = category ? await getTransactionById(userId, transactionId) : null;
     if (!category || !transaction) {
       await answerCallbackQuery(callbackQuery.id, "Не удалось обновить категорию");
       return;

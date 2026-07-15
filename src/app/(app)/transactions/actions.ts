@@ -30,10 +30,12 @@ function parseInput(formData: FormData): TransactionInput | { error: string } {
     return { error: ru.transactionModal.categoryRequired };
   }
 
-  const occurredAt = dateParam(year, month, day);
-  if (Number.isNaN(new Date(occurredAt).getTime())) {
+  const daysInMonth = new Date(year, month, 0).getDate();
+  if (!Number.isInteger(day) || day < 1 || day > daysInMonth) {
     return { error: ru.transactionModal.dateInvalid };
   }
+
+  const occurredAt = dateParam(year, month, day);
 
   return {
     type,
