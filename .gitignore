@@ -39,6 +39,8 @@ yarn-error.log*
 # local project docs / AI-assistant instructions — not for the shared repo
 /docs/
 /CLAUDE.md
+/feedback-about-user.md
+/.claude/
 
 # typescript
 *.tsbuildinfo
