@@ -11,6 +11,7 @@ import { ru } from "@/lib/i18n/ru";
 import { CategoryDonut, DailyExpensesChart } from "./DashboardCharts";
 
 const NO_CATEGORY_COLOR = "oklch(0.5 0 0)";
+const OVERSPEND_COLOR = "oklch(0.7 0.13 25)";
 
 export async function DashboardView({ year, month }: { year: number; month: number }) {
   const prev = shiftMonth(year, month, -1);
@@ -34,12 +35,14 @@ export async function DashboardView({ year, month }: { year: number; month: numb
     }));
 
   const hasIncome = summary.income > 0;
-  const budgetUsedPct = hasIncome
-    ? Math.min(100, Math.round((summary.expense / summary.income) * 100))
+  const budgetUsedPctRaw = hasIncome
+    ? (summary.expense / summary.income) * 100
     : summary.expense > 0
       ? 100
       : 0;
-  const budgetRemainingPct = 100 - budgetUsedPct;
+  const budgetUsedPct = Math.min(100, Math.round(budgetUsedPctRaw));
+  const budgetRemainingPct = Math.round(100 - budgetUsedPctRaw);
+  const overspent = summary.expense > summary.income;
 
   const recent = monthTransactions.slice(0, 5).map((t) => ({
     id: t.id,
@@ -80,7 +83,10 @@ export async function DashboardView({ year, month }: { year: number; month: numb
           {ru.dashboard.balanceFor} {monthLabel(year, month)}
         </div>
         <div className="my-3.5 h-px w-full" style={{ background: "var(--app-border-stronger)" }} />
-        <div className="-ml-1 whitespace-nowrap text-[112px] font-extrabold leading-none tracking-tight">
+        <div
+          className="-ml-1 whitespace-nowrap text-[112px] font-extrabold leading-none tracking-tight"
+          style={overspent ? { color: OVERSPEND_COLOR } : undefined}
+        >
           {summary.balance >= 0 ? "+ " : "− "}
           {formatRub(Math.abs(summary.balance))} ₽
         </div>
@@ -117,18 +123,25 @@ export async function DashboardView({ year, month }: { year: number; month: numb
             {ru.dashboard.budgetRemaining}
           </div>
           <div className="my-3 h-px" style={{ background: "var(--app-border-strong)" }} />
-          <div className="text-[36px] font-bold tracking-tight">{budgetRemainingPct}%</div>
+          <div
+            className="text-[36px] font-bold tracking-tight"
+            style={overspent ? { color: OVERSPEND_COLOR } : undefined}
+          >
+            {budgetRemainingPct}%
+          </div>
           <div
             className="my-3.5 h-[3px] overflow-hidden rounded-full"
             style={{ background: "var(--app-border-strong)" }}
           >
             <div
               className="h-full rounded-full"
-              style={{ background: "oklch(0.75 0 0)", width: `${budgetUsedPct}%` }}
+              style={{ background: overspent ? OVERSPEND_COLOR : "oklch(0.75 0 0)", width: `${budgetUsedPct}%` }}
             />
           </div>
-          <div className="text-xs" style={{ color: "var(--app-text-dimmest)" }}>
-            {formatRub(Math.max(0, summary.balance))} ₽ {ru.dashboard.of} {formatRub(summary.income)} ₽
+          <div className="text-xs" style={{ color: overspent ? OVERSPEND_COLOR : "var(--app-text-dimmest)" }}>
+            {overspent
+              ? `${ru.budget.overspend} ${formatRub(summary.expense - summary.income)} ₽`
+              : `${formatRub(Math.max(0, summary.balance))} ₽ ${ru.dashboard.of} ${formatRub(summary.income)} ₽`}
           </div>
         </div>
       </div>
